@@ -21,6 +21,7 @@ fn main() {
         .add_systems(Startup, spawn_circles)
         .add_systems(Update, toggle_wireframe)
         .add_systems(Update, toggle_circles)
+        .add_systems(Update, camera_movement)
         .run();
 }
 
@@ -107,3 +108,21 @@ fn toggle_circles(
         }
     }
 }
+
+fn camera_movement(
+    mut query: Query<&mut Transform, With<Camera2d>>,
+    mut motion: EventReader<CursorMoved>,
+    buttons: Res<ButtonInput<MouseButton>>,
+) {
+    if buttons.pressed(MouseButton::Left) {
+        if let Ok(mut transform) = query.get_single_mut() {
+            for event in motion.read() {
+                if let Some(delta) = event.delta {
+                    transform.translation.x -= delta.x;
+                    transform.translation.y += delta.y;
+                }
+            }
+        }
+    }
+}
+
