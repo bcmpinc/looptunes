@@ -24,6 +24,10 @@ fn setup(mut commands: Commands, mut windows: Query<&mut Window>) {
     window.cursor.icon = CursorIcon::Pointer;
 }
 
+struct FancyCircleMaterial {
+    shader: Handle<Shader>,
+}
+
 struct Node {
     x: f32,
     y: f32,
@@ -45,11 +49,11 @@ fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut m
     ];
 
     for node in nodes {
-        let mesh = Circle::new(node.radius);
+        let mesh = Rectangle::default();
 
         commands.spawn(ColorMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
-            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)),
+            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
             material: materials.add(Color::linear_rgb(0.0, 1.0, 1.0)),
             ..Default::default()
         });
