@@ -6,5 +6,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-bevy = "0.14"
+[dependencies.bevy]
+version = "0.14"
+features = ["file_watcher"]

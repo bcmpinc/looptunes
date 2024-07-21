@@ -77,7 +77,7 @@ fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut m
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
             material: materials.add(FancyCircleMaterial {
                 color: node.color,
-                width: 0.1,
+                width: 0.2,
             }),
             ..Default::default()
         });
