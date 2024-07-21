@@ -1,6 +1,6 @@
 use bevy::asset::Assets;
 use bevy::math::Vec3;
-use bevy::sprite::{ColorMesh2dBundle, Mesh2dHandle};
+use bevy::sprite::{ColorMesh2dBundle, Mesh2dHandle, Wireframe2dConfig, Wireframe2dPlugin};
 use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
@@ -11,9 +11,10 @@ use bevy::window::{CursorIcon, Window};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, Wireframe2dPlugin))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_circles)
+        .add_systems(Update, toggle_wireframe)
         .run();
 }
 
@@ -60,4 +61,11 @@ fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut m
     }
 }
 
-
+fn toggle_wireframe(
+    mut wireframe_config: ResMut<Wireframe2dConfig>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard.just_pressed(KeyCode::Space) {
+        wireframe_config.global = !wireframe_config.global;
+    }
+}
