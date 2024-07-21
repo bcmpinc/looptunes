@@ -13,5 +13,17 @@ fn vertex(
 
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
-    return 0.5 * vec4<f32>(mesh.uv, 0.5, 1.0) + 0.5 * color;
+    let pos : vec2<f32> = mesh.uv * 2.0 - vec2<f32>(1.0,1.0);
+    let dist = length(pos);
+    let aa = fwidth(dist);
+    let edge0 = dist - 1.0 + width;
+    let edge1 = 1.0 - dist;
+    if 0.0 < edge0 && 0.0 < edge1 {
+        let minedge = min(edge0, edge1);
+        if minedge < aa {
+            return vec4<f32>(color.rgb, minedge / aa);
+        }
+        return color;
+    } 
+    discard;
 }
