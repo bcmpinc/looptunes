@@ -1,9 +1,9 @@
-use bevy::{
-    app::{App, Startup},
-    core_pipeline::core_2d::Camera2dBundle,
-    ecs::system::Commands,
-    DefaultPlugins,
-};
+use bevy::DefaultPlugins;
+use bevy::app::{App, Startup};
+use bevy::core_pipeline::core_2d::Camera2dBundle;
+use bevy::ecs::system::Commands;
+use bevy::prelude::Query;
+use bevy::window::{CursorIcon, Window};
 
 fn main() {
     App::new()
@@ -12,6 +12,9 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut windows: Query<&mut Window>) {
     commands.spawn(Camera2dBundle::default());
+    
+    let mut window = windows.single_mut();
+    window.cursor.icon = CursorIcon::Pointer;
 }
