@@ -15,6 +15,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_circles)
         .add_systems(Update, toggle_wireframe)
+        .add_systems(Update, toggle_circles)
         .run();
 }
 
@@ -51,7 +52,7 @@ fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut m
 
     for node in nodes {
         let mesh = Rectangle::default();
-
+        
         commands.spawn(ColorMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
@@ -67,5 +68,20 @@ fn toggle_wireframe(
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
         wireframe_config.global = !wireframe_config.global;
+    }
+}
+
+fn toggle_circles(
+    mut query : Query<&mut Mesh2dHandle>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    for mut mesh in query.iter_mut() {
+        if keyboard.just_pressed(KeyCode::KeyR) {
+            *mesh = Mesh2dHandle(meshes.add(Rectangle::default()));
+        }
+        if keyboard.just_pressed(KeyCode::KeyC) {
+            *mesh = Mesh2dHandle(meshes.add(Circle::default()));
+        }
     }
 }
