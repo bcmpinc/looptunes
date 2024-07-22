@@ -9,7 +9,8 @@ use bevy::sprite::{Material2d, Material2dPlugin};
 pub struct NodePlugin;
 impl Plugin for NodePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(Material2dPlugin::<FancyCircleMaterial>::default());
+        app .add_plugins(Material2dPlugin::<FancyCircleMaterial>::default())
+            .add_systems(Update, update_timers);
     }
 }
 
@@ -18,14 +19,17 @@ impl Plugin for NodePlugin {
 pub struct FancyCircleMaterial {
     #[uniform(0)]
     color: LinearRgba,
-    #[texture(1)]
-    #[sampler(2)]
+    #[uniform(1)]
+    time: f32,
+    #[texture(2)]
+    #[sampler(3)]
     radius: Handle<Image>,
 }
 
 impl FancyCircleMaterial {
     pub fn new(color: LinearRgba, radius: Handle<Image>) -> FancyCircleMaterial {
-        FancyCircleMaterial{color, radius}
+        let time = 0.0;
+        FancyCircleMaterial{color, time, radius}
     }
 }
 
@@ -37,3 +41,11 @@ impl Material2d for FancyCircleMaterial {
     }
 }
 
+fn update_timers(
+    mut circles: ResMut<Assets<FancyCircleMaterial>>,
+    time: Res<Time>
+) {
+    for c in circles.iter_mut() {
+        c.1.time = time.elapsed_seconds();
+    }
+}

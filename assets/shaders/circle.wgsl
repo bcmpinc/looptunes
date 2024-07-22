@@ -1,8 +1,9 @@
 #import bevy_sprite::mesh2d_vertex_output::VertexOutput
 
 @group(2) @binding(0) var<uniform> color: vec4<f32>;
-@group(2) @binding(1) var radius_texture: texture_2d<f32>;
-@group(2) @binding(2) var radius_sampler: sampler;
+@group(2) @binding(1) var<uniform> time: f32;
+@group(2) @binding(2) var radius_texture: texture_2d<f32>;
+@group(2) @binding(3) var radius_sampler: sampler;
 
 const TAU = 6.283185307179586;
 const PI = TAU / 2;
@@ -27,7 +28,7 @@ fn blend(a:vec4<f32>, b:vec4<f32>) -> vec4<f32>{
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let pos : vec2<f32> = mesh.uv * 2.0 - vec2<f32>(1.0,1.0);
-    let arg = (PI + atan2(pos.x, pos.y)) / TAU;
+    let arg = fract((PI + atan2(pos.x, pos.y)) / TAU - time);
     let radius = textureSample(radius_texture, radius_sampler, vec2<f32>(arg, 0.0)).r;
     let dist = (0.9 - length(pos)) / 0.1;
     let guide = 15.0-abs(dist) / dpdx(pos.x);
