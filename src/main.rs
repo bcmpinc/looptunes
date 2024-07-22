@@ -17,6 +17,7 @@ mod wireframe; use wireframe::*;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
             DefaultPlugins,
             Wireframe(KeyCode::Space),
