@@ -10,18 +10,21 @@ use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
+mod pancamera;
+use pancamera::PanCamera;
+
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins, 
             Wireframe2dPlugin,
             Material2dPlugin::<FancyCircleMaterial>::default(),
+            PanCamera,
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_circles)
         .add_systems(Update, toggle_wireframe)
         .add_systems(Update, toggle_circles)
-        .add_systems(Update, camera_movement)
         .run();
 }
 
@@ -105,23 +108,6 @@ fn toggle_circles(
         }
         if keyboard.just_pressed(KeyCode::KeyC) {
             *mesh = Mesh2dHandle(meshes.add(Circle::default()));
-        }
-    }
-}
-
-fn camera_movement(
-    mut query: Query<&mut Transform, With<Camera2d>>,
-    mut motion: EventReader<CursorMoved>,
-    buttons: Res<ButtonInput<MouseButton>>,
-) {
-    if buttons.pressed(MouseButton::Left) {
-        if let Ok(mut transform) = query.get_single_mut() {
-            for event in motion.read() {
-                if let Some(delta) = event.delta {
-                    transform.translation.x -= delta.x;
-                    transform.translation.y += delta.y;
-                }
-            }
         }
     }
 }
