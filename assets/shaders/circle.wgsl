@@ -1,23 +1,26 @@
 #import bevy_sprite::mesh2d_vertex_output::VertexOutput
 
 @group(2) @binding(0) var<uniform> color: vec4<f32>;
-@group(2) @binding(1) var<uniform> width: f32;
+@group(2) @binding(1) var radius_texture: texture_2d<f32>;
+@group(2) @binding(2) var radius_sampler: sampler;
 
-@vertex
-fn vertex(
-    @location(0) position: vec3<f32>,
-    @builtin(instance_index) instance_index: u32
-) -> @builtin(position) vec4<f32> {
-    return vec4<f32>(position, 1.0);
+const TAU = 6.283185307179586;
+const PI = TAU / 2;
+const WHITE = vec4<f32>(1.0,1.0,1.0,1.0);
+
+fn lerp(t:f32, a:vec4<f32>, b:vec4<f32>) -> vec4<f32>{
+    return a + (b-a) * t;
 }
 
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let pos : vec2<f32> = mesh.uv * 2.0 - vec2<f32>(1.0,1.0);
-    let dist = 1.0 - length(pos);
-    let pp = 1.0 / dpdx(pos.x);
-    let pixels = dist * pp;
-    let edge = min(pixels, sqrt(width * pp) - pixels) * 0.5;
-    if edge < 0.0 { discard; }
-    return vec4<f32>(color.rgb, min(1.0, edge));
+    let arg = (PI + atan2(pos.x, pos.y)) / TAU;
+    let radius = textureSample(radius_texture, radius_sampler, vec2<f32>(arg, 0.0)).r;
+    let dist = (0.9 - length(pos)) / 0.1;
+    // let pixels = dist / dpdx(pos.x) / 10.0;
+    let pixels = 1.5*(radius - dist * dist);
+    if pixels < 0.0 { discard; }
+    if pixels < 1.0 { return vec4<f32>(color.rgb, pixels); }
+    return lerp(pixels-1.0, color.rgba, WHITE);
 }

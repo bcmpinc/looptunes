@@ -1,5 +1,7 @@
 use bevy::asset::Assets;
 use bevy::math::Vec3;
+use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
 use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
@@ -10,7 +12,7 @@ use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
 mod pancamera; use pancamera::*;
-mod material;  use material::*;
+mod node;  use node::*;
 mod wireframe; use wireframe::*;
 
 fn main() {
@@ -18,7 +20,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             Wireframe(KeyCode::Space),
-            Materials,
+            NodePlugin,
             PanCamera(MouseButton::Left),
         ))
         .add_systems(Startup, setup)
@@ -39,29 +41,49 @@ struct Node {
     y: f32,
     radius: f32,
     color: LinearRgba,
+    f: fn(f32) -> f32,
 }
 
 impl Node  {
-    fn new(x: f32, y: f32, radius: f32, color: LinearRgba) -> Self {
-        Self { x, y, radius, color }
+    fn new(x: f32, y: f32, radius: f32, color: LinearRgba, f: fn(f32) -> f32) -> Self {
+        Self { x, y, radius, color, f }
     }
 }
 
-fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<FancyCircleMaterial>>) {
+fn spawn_circles(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>, 
+    mut materials: ResMut<Assets<FancyCircleMaterial>>,
+    mut textures: ResMut<Assets<Image>>,
+) {
     // Example circle data
     let nodes = vec![
-        Node::new(0.0, 0.0, 50.0, LinearRgba::rgb(0.0, 1.0, 1.0)),
-        Node::new(100.0, 100.0, 75.0, LinearRgba::rgb(1.0, 0.0, 1.0)),
-        Node::new(-150.0, -150.0, 30.0, LinearRgba::rgb(1.0, 1.0, 0.0)),
+        Node::new(0.0, 0.0, 50.0, LinearRgba::rgb(0.0, 1.0, 1.0), |x| (1.0-2.0*x).abs()),
+        Node::new(100.0, 100.0, 75.0, LinearRgba::rgb(1.0, 0.0, 1.0), |x| (x*3.0).fract()),
+        Node::new(-150.0, -150.0, 30.0, LinearRgba::rgb(1.0, 1.0, 0.0), |x| ((x*x).fract()*12345.0).fract()),
     ];
 
     for node in nodes {
         let mesh = Rectangle::default();
-        
+        let gen = |x: i32| ((node.f)(x as f32 / 1024.0).clamp(0.0,1.0) * 65535.0) as u16;
+        let grayscale_data = (0..1024).map(gen).flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
+        let image = Image::new_fill(
+            Extent3d {
+                width: 1024,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            &grayscale_data,
+            TextureFormat::R16Unorm,
+            RenderAssetUsages::RENDER_WORLD,
+        );
+        let image_handle = textures.add(image);
+    
         commands.spawn(MaterialMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
-            material: materials.add(FancyCircleMaterial::new(node.color, 5.0)),
+            material: materials.add(FancyCircleMaterial::new(node.color, image_handle)),
             ..Default::default()
         });
     }

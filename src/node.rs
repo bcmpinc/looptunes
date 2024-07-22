@@ -6,8 +6,8 @@ use bevy::reflect::TypePath;
 use bevy::render::render_resource::{AsBindGroup, ShaderRef};
 use bevy::sprite::{Material2d, Material2dPlugin};
 
-pub struct Materials;
-impl Plugin for Materials {
+pub struct NodePlugin;
+impl Plugin for NodePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(Material2dPlugin::<FancyCircleMaterial>::default());
     }
@@ -18,13 +18,14 @@ impl Plugin for Materials {
 pub struct FancyCircleMaterial {
     #[uniform(0)]
     color: LinearRgba,
-    #[uniform(1)]
-    width: f32,
+    #[texture(1)]
+    #[sampler(2)]
+    radius: Handle<Image>,
 }
 
 impl FancyCircleMaterial {
-    pub fn new(color: LinearRgba, width: f32) -> FancyCircleMaterial {
-        FancyCircleMaterial{color, width}
+    pub fn new(color: LinearRgba, radius: Handle<Image>) -> FancyCircleMaterial {
+        FancyCircleMaterial{color, radius}
     }
 }
 
