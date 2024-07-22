@@ -9,24 +9,21 @@ use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
-mod pancamera;
-use pancamera::*;
-
-mod material;
-use material::*;
-
+mod pancamera; use pancamera::*;
+mod material;  use material::*;
+mod wireframe; use wireframe::*;
 
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins, 
+            DefaultPlugins,
+            Wireframe::new(KeyCode::Space),
             Wireframe2dPlugin,
             Materials,
             PanCamera,
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_circles)
-        .add_systems(Update, toggle_wireframe)
         .add_systems(Update, toggle_circles)
         .run();
 }
@@ -71,14 +68,6 @@ fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut m
     }
 }
 
-fn toggle_wireframe(
-    mut wireframe_config: ResMut<Wireframe2dConfig>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    if keyboard.just_pressed(KeyCode::Space) {
-        wireframe_config.global = !wireframe_config.global;
-    }
-}
 
 fn toggle_circles(
     mut query : Query<&mut Mesh2dHandle>,
