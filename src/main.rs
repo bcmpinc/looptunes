@@ -1,7 +1,6 @@
 use bevy::asset::Assets;
 use bevy::math::Vec3;
-use bevy::render::render_resource::{AsBindGroup, ShaderRef};
-use bevy::sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle, Wireframe2dConfig, Wireframe2dPlugin};
+use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle, Wireframe2dConfig, Wireframe2dPlugin};
 use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
@@ -11,14 +10,18 @@ use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
 mod pancamera;
-use pancamera::PanCamera;
+use pancamera::*;
+
+mod material;
+use material::*;
+
 
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins, 
             Wireframe2dPlugin,
-            Material2dPlugin::<FancyCircleMaterial>::default(),
+            Materials,
             PanCamera,
         ))
         .add_systems(Startup, setup)
@@ -33,23 +36,6 @@ fn setup(mut commands: Commands, mut windows: Query<&mut Window>) {
     
     let mut window = windows.single_mut();
     window.cursor.icon = CursorIcon::Pointer;
-}
-
-// This is the struct that will be passed to your shader
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-struct FancyCircleMaterial {
-    #[uniform(0)]
-    color: LinearRgba,
-    #[uniform(1)]
-    width: f32,
-}
-
-/// The Material2d trait is very configurable, but comes with sensible defaults for all methods.
-/// You only need to implement functions for features that need non-default behavior. See the Material2d api docs for details!
-impl Material2d for FancyCircleMaterial {
-    fn fragment_shader() -> ShaderRef {
-        "shaders/circle.wgsl".into()
-    }
 }
 
 struct Node {
@@ -79,10 +65,7 @@ fn spawn_circles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut m
         commands.spawn(MaterialMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
-            material: materials.add(FancyCircleMaterial {
-                color: node.color,
-                width: 0.2,
-            }),
+            material: materials.add(FancyCircleMaterial::new(node.color, 0.2)),
             ..Default::default()
         });
     }
