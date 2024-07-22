@@ -1,6 +1,6 @@
 use bevy::asset::Assets;
 use bevy::math::Vec3;
-use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle, Wireframe2dConfig, Wireframe2dPlugin};
+use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
 use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
@@ -17,10 +17,9 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            Wireframe::new(KeyCode::Space),
-            Wireframe2dPlugin,
+            Wireframe(KeyCode::Space),
             Materials,
-            PanCamera,
+            PanCamera(MouseButton::Left),
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_circles)
