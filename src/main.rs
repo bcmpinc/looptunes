@@ -12,7 +12,7 @@ use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
 mod pancamera; use pancamera::*;
-mod node;  use node::*;
+mod cyclewave;  use cyclewave::*;
 mod wireframe; use wireframe::*;
 
 fn main() {
@@ -21,7 +21,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             Wireframe(KeyCode::Space),
-            NodePlugin,
+            CycleWavePlugin,
             PanCamera(MouseButton::Left),
         ))
         .add_systems(Startup, setup)

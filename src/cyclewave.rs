@@ -10,8 +10,8 @@ use bevy::sprite::{Material2d, Material2dPlugin};
 
 use rand::{thread_rng, Rng};
 
-pub struct NodePlugin;
-impl Plugin for NodePlugin {
+pub struct CycleWavePlugin;
+impl Plugin for CycleWavePlugin {
     fn build(&self, app: &mut App) {
         app .add_plugins(Material2dPlugin::<FancyCircleMaterial>::default())
             .add_systems(Update, update_timers);
@@ -93,6 +93,10 @@ impl Default for Cycle {
     }
 }
 
+/** 
+ * Component describes a free-form waveform.
+ * It's table is automatically synced with the attached FancyCircleMaterial.
+ */
 #[derive(Component,Clone)]
 pub struct Wave {
     pattern: [f32;Self::LENGTH],
@@ -100,7 +104,7 @@ pub struct Wave {
 
 impl Wave {
     pub const LENGTH : usize = 1024;
-    pub const SINE     : fn(f32) -> f32 = |x| f32::sin(x * std::f32::consts::TAU);
+    pub const SINE     : fn(f32) -> f32 = |x| f32::cos(x * std::f32::consts::TAU);
     pub const SQUARE   : fn(f32) -> f32 = |x| if x < 0.5 {1.0} else {0.0};
     pub const TRIANGLE : fn(f32) -> f32 = |x| (1.0-2.0*x).abs();
     pub const SAWTOOTH : fn(f32) -> f32 = |x| 1.0-x;
@@ -125,8 +129,12 @@ impl Default for Wave {
     }
 }
 
+/**
+ * Bundle that creates a Cycle Wave component.
+ * The 
+ */
 #[derive(Bundle, Clone)]
-pub struct LoopWaveBundle {
+pub struct CycleWaveBundle {
     pub cycle: Cycle,
     pub wave: Wave,
     pub material: Handle<FancyCircleMaterial>,
@@ -137,7 +145,7 @@ pub struct LoopWaveBundle {
     pub view_visibility: ViewVisibility,
 }
 
-impl Default for LoopWaveBundle {
+impl Default for CycleWaveBundle {
     fn default() -> Self {
         Self {
             cycle: Default::default(),
