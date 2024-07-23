@@ -5,7 +5,8 @@ use bevy::asset::Asset;
 use bevy::color::LinearRgba;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
-use bevy::render::render_resource::{AsBindGroup, ShaderRef};
+use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureDimension, TextureFormat};
 use bevy::sprite::{Material2d, Material2dPlugin};
 
 use rand::{thread_rng, Rng};
@@ -13,8 +14,10 @@ use rand::{thread_rng, Rng};
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
     fn build(&self, app: &mut App) {
-        app .add_plugins(Material2dPlugin::<WaveMaterial>::default())
-            .add_systems(Update, update_timers);
+        app 
+            .add_plugins(Material2dPlugin::<WaveMaterial>::default())
+            .add_systems(Update, update_textures)
+        ;
     }
 }
 
@@ -70,8 +73,9 @@ impl Default for Cycle {
 #[derive(Component,Clone)]
 pub struct Wave {
     pattern: [f32;Self::LENGTH],
+    material: Handle<WaveMaterial>,
+    average: f32,
 }
-
 impl Wave {
     pub const LENGTH : usize = 1024;
     pub const SINE     : fn(f32) -> f32 = |x| f32::cos(x * std::f32::consts::TAU);
@@ -86,7 +90,9 @@ impl Wave {
             r[i] = generator(i as f32 / Self::LENGTH as f32);
         }
         Self {
-            pattern: r
+            pattern: r,
+            material: default(),
+            average: 0.0,
         }
     }
 }
@@ -94,7 +100,43 @@ impl Wave {
 impl Default for Wave {
     fn default() -> Self {
         Self {
-            pattern: [0.0; 1024]
+            pattern: [0.0; 1024],
+            material: default(),
+            average: 0.0,
+        }
+    }
+}
+
+fn update_textures(
+    mut waves: Query<&mut Wave>,
+    mut materials: ResMut<Assets<WaveMaterial>>,
+    mut textures: ResMut<Assets<Image>>,
+) {
+    for mut item in &mut waves {
+        if item.is_added() {
+            let wave = &mut item.bypass_change_detection();
+            wave.material = materials.add(WaveMaterial::new(LinearRgba::WHITE, default()));
+        }
+        if item.is_changed() {
+            let wave = &mut item.bypass_change_detection();
+            fn f32_to_u16(v: &f32) -> u16 {
+                f32::clamp(v*65536.0,0.0,65535.0) as u16
+            }
+            let grayscale_data = wave.pattern.iter().map(f32_to_u16).flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
+            let image = Image::new(
+                Extent3d {
+                    width: 1024,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                TextureDimension::D2,
+                grayscale_data,
+                TextureFormat::R16Unorm,
+                RenderAssetUsages::RENDER_WORLD,
+            );
+            let image_handle = textures.add(image);
+            materials.get_mut(&wave.material).unwrap().radius = image_handle;
+            println!("Updated texture for {}", wave.material.id());
         }
     }
 }
@@ -122,15 +164,6 @@ impl Material2d for WaveMaterial {
     }
 }
 
-fn update_timers(
-    mut circles: ResMut<Assets<WaveMaterial>>,
-    time: Res<Time>
-) {
-    for c in circles.iter_mut() {
-        c.1.time = time.elapsed_seconds() % 256.0;
-    }
-}
-
 /**
  * Bundle that creates a Cycle Wave component.
  * The 
@@ -139,7 +172,6 @@ fn update_timers(
 pub struct CycleWaveBundle {
     pub cycle: Cycle,
     pub wave: Wave,
-    pub material: Handle<WaveMaterial>,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
     pub visibility: Visibility,
@@ -152,7 +184,6 @@ impl Default for CycleWaveBundle {
         Self {
             cycle: Default::default(),
             wave: Default::default(),
-            material: Default::default(),
             transform: Default::default(),
             global_transform: Default::default(),
             visibility: Default::default(),

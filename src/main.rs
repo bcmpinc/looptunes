@@ -21,12 +21,11 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             Wireframe(KeyCode::Space),
+            PanCamera(MouseButton::Right),
             CycleWavePlugin,
-            PanCamera(MouseButton::Left),
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_circles)
-        .add_systems(Update, toggle_circles)
         .run();
 }
 
@@ -65,6 +64,7 @@ fn spawn_circles(
     ];
 
     for node in nodes {
+        /*
         let mesh = Rectangle::default();
         let gen = |x: i32| ((node.f)(x as f32 / 1024.0).clamp(0.0,1.0) * 65535.0) as u16;
         let grayscale_data = (0..1024).map(gen).flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
@@ -83,26 +83,14 @@ fn spawn_circles(
     
         commands.spawn(MaterialMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
-            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
             material: materials.add(WaveMaterial::new(node.color, image_handle)),
             ..Default::default()
         });
-    }
-}
-
-
-fn toggle_circles(
-    mut query : Query<&mut Mesh2dHandle>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    for mut mesh in query.iter_mut() {
-        if keyboard.just_pressed(KeyCode::KeyR) {
-            *mesh = Mesh2dHandle(meshes.add(Rectangle::default()));
-        }
-        if keyboard.just_pressed(KeyCode::KeyC) {
-            *mesh = Mesh2dHandle(meshes.add(Circle::default()));
-        }
+         */
+        commands.spawn(CycleWaveBundle{
+            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
+            ..default()
+        });
     }
 }
 
