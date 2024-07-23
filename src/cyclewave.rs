@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureDimension, TextureFormat};
-use bevy::sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle};
+use bevy::sprite::{Anchor, Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle};
 
 use rand::{thread_rng, Rng};
 
@@ -30,7 +30,6 @@ pub struct Cycle {
     pub color: LinearRgba,
 }
 
-#[allow(dead_code)]
 impl Cycle {
     /** List of node frequencies as (name, Hz) pairs. */
     const FREQUENCY_LIST : [(&'static str,f64);114] = [
@@ -86,6 +85,25 @@ fn create_children(
                         ..Default::default()
                     }
                 ));
+                parent.spawn(
+                    Text2dBundle{
+                        text: Text{
+                            sections:vec![
+                                TextSection::new(
+                                    item.1.frequency_name(),
+                                    TextStyle{
+                                        font_size: 1000.0,
+                                        ..default()
+                                    }
+                                )
+                            ],
+                            ..default()
+                        },
+                        text_anchor: Anchor::Center,
+                        transform: Transform::from_scale(Vec3::new(0.0002,0.0002,1.0)),
+                        ..default()
+                    }
+                );
             });
             materials.get_mut(&item.2.material).unwrap().color = item.1.color;
         }

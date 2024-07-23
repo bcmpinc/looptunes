@@ -38,11 +38,12 @@ struct Node {
     radius: f32,
     color: LinearRgba,
     f: fn(f32) -> f32,
+    freq: u32,
 }
 
 impl Node  {
-    fn new(x: f32, y: f32, radius: f32, color: LinearRgba, f: fn(f32) -> f32) -> Self {
-        Self { x, y, radius, color, f }
+    fn new(x: f32, y: f32, radius: f32, color: LinearRgba, f: fn(f32) -> f32, freq: u32) -> Self {
+        Self { x, y, radius, color, f, freq }
     }
 }
 
@@ -51,15 +52,16 @@ fn spawn_cyclewaves(
 ) {
     // Example circle data
     let nodes = vec![
-        Node::new(0.0, 0.0, 50.0, LinearRgba::rgb(0.0, 1.0, 1.0), |x| (1.0-2.0*x).abs()),
-        Node::new(30.0, 30.0, 75.0, LinearRgba::rgb(1.0, 0.0, 1.0), |x| (x*3.0).fract()),
-        Node::new(-20.0, 20.0, 60.0, LinearRgba::rgb(1.0, 1.0, 0.0), |x| ((x*x).fract()*12345.0).fract()),
+        Node::new(0.0, 0.0, 50.0, LinearRgba::rgb(0.0, 1.0, 1.0), |x| (1.0-2.0*x).abs(), 3),
+        Node::new(30.0, 30.0, 75.0, LinearRgba::rgb(1.0, 0.0, 1.0), |x| (x*3.0).fract(), 4),
+        Node::new(-20.0, 20.0, 60.0, LinearRgba::rgb(1.0, 1.0, 0.0), |x| ((x*x).fract()*12345.0).fract(), 5),
     ];
 
     for node in nodes {
         commands.spawn(CycleWaveBundle{
             cycle: Cycle{
                 color: node.color,
+                frequency: node.freq,
                 ..Default::default()
             },
             wave: Wave::new(node.f),
