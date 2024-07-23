@@ -1,8 +1,4 @@
-use bevy::asset::Assets;
 use bevy::math::Vec3;
-use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
 use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
@@ -25,7 +21,7 @@ fn main() {
             CycleWavePlugin,
         ))
         .add_systems(Startup, setup)
-        .add_systems(Startup, spawn_circles)
+        .add_systems(Startup, spawn_cyclewaves)
         .run();
 }
 
@@ -50,11 +46,8 @@ impl Node  {
     }
 }
 
-fn spawn_circles(
+fn spawn_cyclewaves(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>, 
-    mut materials: ResMut<Assets<WaveMaterial>>,
-    mut textures: ResMut<Assets<Image>>,
 ) {
     // Example circle data
     let nodes = vec![
@@ -64,30 +57,12 @@ fn spawn_circles(
     ];
 
     for node in nodes {
-        /*
-        let mesh = Rectangle::default();
-        let gen = |x: i32| ((node.f)(x as f32 / 1024.0).clamp(0.0,1.0) * 65535.0) as u16;
-        let grayscale_data = (0..1024).map(gen).flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
-        let image = Image::new_fill(
-            Extent3d {
-                width: 1024,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-            TextureDimension::D2,
-            &grayscale_data,
-            TextureFormat::R16Unorm,
-            RenderAssetUsages::RENDER_WORLD,
-        );
-        let image_handle = textures.add(image);
-    
-        commands.spawn(MaterialMesh2dBundle {
-            mesh: Mesh2dHandle(meshes.add(mesh)),
-            material: materials.add(WaveMaterial::new(node.color, image_handle)),
-            ..Default::default()
-        });
-         */
         commands.spawn(CycleWaveBundle{
+            cycle: Cycle{
+                color: node.color,
+                ..Default::default()
+            },
+            wave: Wave::new(node.f),
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
             ..default()
         });

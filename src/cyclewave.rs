@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureDimension, TextureFormat};
-use bevy::sprite::{Material2d, Material2dPlugin};
+use bevy::sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle};
 
 use rand::{thread_rng, Rng};
 
@@ -16,7 +16,7 @@ impl Plugin for CycleWavePlugin {
     fn build(&self, app: &mut App) {
         app 
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
-            .add_systems(Update, update_textures)
+            .add_systems(SpawnScene, (update_textures, create_children).chain())
         ;
     }
 }
@@ -26,8 +26,9 @@ impl Plugin for CycleWavePlugin {
  */
 #[derive(Component,Clone)]
 pub struct Cycle {
-    frequency: u32,
-    phase: f32,
+    pub frequency: u32,
+    pub phase: f32,
+    pub color: LinearRgba,
 }
 
 impl Cycle {
@@ -62,6 +63,28 @@ impl Default for Cycle {
         Self {
             frequency: Self::DEFAULT_FREQUENCY,
             phase: 0.0,
+            color: LinearRgba::WHITE,
+        }
+    }
+}
+
+fn create_children(
+    mut commands: Commands,
+    q: Query<(Entity,Ref<Cycle>,&Wave)>,
+    mut meshes: ResMut<Assets<Mesh>>, 
+    mut materials: ResMut<Assets<WaveMaterial>>,
+) {
+    for item in &q {
+        if item.1.is_added() {
+            let mesh = Rectangle::default();
+            commands.entity(item.0).with_children(|parent| {
+                parent.spawn(MaterialMesh2dBundle {
+                    mesh: Mesh2dHandle(meshes.add(mesh)),
+                    material: item.2.material.clone(),
+                    ..Default::default()
+                });
+            });
+            materials.get_mut(&item.2.material).unwrap().color = item.1.color;
         }
     }
 }
@@ -119,6 +142,7 @@ fn update_textures(
         }
         if item.is_changed() {
             let wave = &mut item.bypass_change_detection();
+            wave.average = wave.pattern.iter().sum::<f32>() / 1024.0;
             fn f32_to_u16(v: &f32) -> u16 {
                 f32::clamp(v*65536.0,0.0,65535.0) as u16
             }
