@@ -138,7 +138,7 @@ pub struct Wave {
 #[allow(dead_code)]
 impl Wave {
     pub const LENGTH : usize = 1024;
-    pub const SINE     : fn(f32) -> f32 = |x| f32::cos(x * std::f32::consts::TAU);
+    pub const SINE     : fn(f32) -> f32 = |x| 0.5 + 0.5 * f32::cos(x * std::f32::consts::TAU);
     pub const SQUARE   : fn(f32) -> f32 = |x| if x < 0.5 {1.0} else {0.0};
     pub const TRIANGLE : fn(f32) -> f32 = |x| (1.0-2.0*x).abs();
     pub const SAWTOOTH : fn(f32) -> f32 = |x| 1.0-x;
