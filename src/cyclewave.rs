@@ -13,38 +13,8 @@ use rand::{thread_rng, Rng};
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
     fn build(&self, app: &mut App) {
-        app .add_plugins(Material2dPlugin::<FancyCircleMaterial>::default())
+        app .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(Update, update_timers);
-    }
-}
-
-/** Shader for drawing fancy circles. */
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-pub struct FancyCircleMaterial {
-    #[uniform(0)] color: LinearRgba,
-    #[uniform(1)] time: f32,
-    #[texture(2)] #[sampler(3)] radius: Handle<Image>,
-}
-
-impl FancyCircleMaterial {
-    pub fn new(color: LinearRgba, radius: Handle<Image>) -> FancyCircleMaterial {
-        let time = 0.0;
-        FancyCircleMaterial{color, time, radius}
-    }
-}
-
-impl Material2d for FancyCircleMaterial {
-    fn fragment_shader() -> ShaderRef {
-        "shaders/circle.wgsl".into()
-    }
-}
-
-fn update_timers(
-    mut circles: ResMut<Assets<FancyCircleMaterial>>,
-    time: Res<Time>
-) {
-    for c in circles.iter_mut() {
-        c.1.time = time.elapsed_seconds() % 256.0;
     }
 }
 
@@ -129,6 +99,38 @@ impl Default for Wave {
     }
 }
 
+/** 
+ * Shader for drawing fancy circles. 
+ */
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct WaveMaterial {
+    #[uniform(0)] color: LinearRgba,
+    #[uniform(1)] time: f32,
+    #[texture(2)] #[sampler(3)] radius: Handle<Image>,
+}
+
+impl WaveMaterial {
+    pub fn new(color: LinearRgba, radius: Handle<Image>) -> WaveMaterial {
+        let time = 0.0;
+        WaveMaterial{color, time, radius}
+    }
+}
+
+impl Material2d for WaveMaterial {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/circle.wgsl".into()
+    }
+}
+
+fn update_timers(
+    mut circles: ResMut<Assets<WaveMaterial>>,
+    time: Res<Time>
+) {
+    for c in circles.iter_mut() {
+        c.1.time = time.elapsed_seconds() % 256.0;
+    }
+}
+
 /**
  * Bundle that creates a Cycle Wave component.
  * The 
@@ -137,7 +139,7 @@ impl Default for Wave {
 pub struct CycleWaveBundle {
     pub cycle: Cycle,
     pub wave: Wave,
-    pub material: Handle<FancyCircleMaterial>,
+    pub material: Handle<WaveMaterial>,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
     pub visibility: Visibility,

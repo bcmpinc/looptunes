@@ -54,7 +54,7 @@ impl Node  {
 fn spawn_circles(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>, 
-    mut materials: ResMut<Assets<FancyCircleMaterial>>,
+    mut materials: ResMut<Assets<WaveMaterial>>,
     mut textures: ResMut<Assets<Image>>,
 ) {
     // Example circle data
@@ -84,7 +84,7 @@ fn spawn_circles(
         commands.spawn(MaterialMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
-            material: materials.add(FancyCircleMaterial::new(node.color, image_handle)),
+            material: materials.add(WaveMaterial::new(node.color, image_handle)),
             ..Default::default()
         });
     }
