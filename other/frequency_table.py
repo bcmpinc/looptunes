@@ -4,14 +4,14 @@ def f(x,n):
     val = str(x)
     if not '.' in val:
         val += '.0'
-    print(f'F({val},"{n}"), ',end='')
+    print(f'("{n}",{val}), ',end='')
 
-f(256,"4m16s")
-f(64, "1m6s")
-f(16, "16s")
-f(4, "4s")
+f(1/256,"4m16s")
+f(1/64, "1m6s")
+f(1/16, "16s")
+f(1/4, "4s")
 f(1, "1s")
-f(1/4, "1/4")
+f(4, "1/4")
 print()
 
 def n(x):
