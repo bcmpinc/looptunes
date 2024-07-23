@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use bevy::app::App;
 use bevy::asset::Asset;
 use bevy::color::LinearRgba;
@@ -17,6 +15,7 @@ impl Plugin for CycleWavePlugin {
         app 
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(SpawnScene, (update_textures, create_children).chain())
+            .add_systems(Update, rotate_cyclewaves)
         ;
     }
 }
@@ -31,6 +30,7 @@ pub struct Cycle {
     pub color: LinearRgba,
 }
 
+#[allow(dead_code)]
 impl Cycle {
     /** List of node frequencies as (name, Hz) pairs. */
     const FREQUENCY_LIST : [(&'static str,f64);114] = [
@@ -78,17 +78,35 @@ fn create_children(
         if item.1.is_added() {
             let mesh = Rectangle::default();
             commands.entity(item.0).with_children(|parent| {
-                parent.spawn(MaterialMesh2dBundle {
-                    mesh: Mesh2dHandle(meshes.add(mesh)),
-                    material: item.2.material.clone(),
-                    ..Default::default()
-                });
+                parent.spawn((
+                    WaveCycleImage,
+                    MaterialMesh2dBundle {
+                        mesh: Mesh2dHandle(meshes.add(mesh)),
+                        material: item.2.material.clone(),
+                        ..Default::default()
+                    }
+                ));
             });
             materials.get_mut(&item.2.material).unwrap().color = item.1.color;
         }
     }
 }
 
+#[derive(Component,Clone)]
+pub struct WaveCycleImage;
+
+fn rotate_cyclewaves(
+    mut q_child: Query<(&Parent, &mut Transform), With<WaveCycleImage>>,
+    q_parent: Query<&Cycle>,
+    time: Res<Time>,
+) {
+    for mut item in q_child.iter_mut() {
+        let frequency = q_parent.get(item.0.get()).unwrap().frequency() as f32;
+        item.1.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);
+    }
+}
+
+    
 /** 
  * Component describes a free-form waveform.
  * It's table is automatically synced with the attached FancyCircleMaterial.
@@ -99,6 +117,7 @@ pub struct Wave {
     material: Handle<WaveMaterial>,
     average: f32,
 }
+#[allow(dead_code)]
 impl Wave {
     pub const LENGTH : usize = 1024;
     pub const SINE     : fn(f32) -> f32 = |x| f32::cos(x * std::f32::consts::TAU);
@@ -135,7 +154,7 @@ fn update_textures(
     mut materials: ResMut<Assets<WaveMaterial>>,
     mut textures: ResMut<Assets<Image>>,
 ) {
-    for mut item in &mut waves {
+    for mut item in waves.iter_mut() {
         if item.is_added() {
             let wave = &mut item.bypass_change_detection();
             wave.material = materials.add(WaveMaterial::new(LinearRgba::WHITE, default()));

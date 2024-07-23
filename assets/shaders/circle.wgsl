@@ -28,7 +28,7 @@ fn blend(a:vec4<f32>, b:vec4<f32>) -> vec4<f32>{
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let pos : vec2<f32> = mesh.uv * 2.0 - vec2<f32>(1.0,1.0);
     let arg = (PI + atan2(pos.x, pos.y)) / TAU;
-    let radius = textureSample(radius_texture, radius_sampler, vec2<f32>(arg, 0.0)).r;
+    let radius = textureSample(radius_texture, radius_sampler, vec2<f32>(1.0 - arg, 0.0)).r;
     let dist = (0.9 - length(pos)) / 0.1;
     let guide = 15.0-abs(dist) / dpdx(pos.x);
     let pixels = 2.0*(radius - dist * dist);
