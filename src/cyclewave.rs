@@ -171,14 +171,12 @@ fn update_textures(
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct WaveMaterial {
     #[uniform(0)] color: LinearRgba,
-    #[uniform(1)] time: f32,
-    #[texture(2)] #[sampler(3)] radius: Handle<Image>,
+    #[texture(1)] #[sampler(2)] radius: Handle<Image>,
 }
 
 impl WaveMaterial {
     pub fn new(color: LinearRgba, radius: Handle<Image>) -> WaveMaterial {
-        let time = 0.0;
-        WaveMaterial{color, time, radius}
+        WaveMaterial{color, radius}
     }
 }
 
