@@ -1,4 +1,5 @@
-use bevy::window::Cursor;
+use bevy::render::camera::RenderTarget;
+use bevy::window::{Cursor, WindowRef};
 use bevy::{app::Plugin, math::Vec3};
 use bevy::prelude::*;
 
@@ -18,18 +19,27 @@ pub struct MousePos {
     on_screen: bool,
 }
 
+impl Default for MousePos {
+    fn default() -> Self {
+        Self {
+            position: default(),
+            on_screen: false,
+        }
+    }
+}
+
 fn tracking (
-    mut commands: Commands,
-    q: Query<(Entity, &Camera2d, &GlobalTransform)>,
+    q: Query<(&mut MousePos, &Camera)>,
     windows: Query<&Window>,
 ) {
-    for mut camera in q.iter() {
-
-
-        let position = MousePos{
-            position: Vec3::ZERO, 
-            on_screen: false,
-        };
-        commands.entity(camera.0).insert(position);
+    for (mut pos, camera) in q.iter() {
+        if let RenderTarget::Window(WindowRef::Entity(window_entity)) = camera.target {
+            let window = windows.get(window_entity).unwrap();
+            println!("Yay camera time!")
+        }
+        if let RenderTarget::Window(WindowRef::Primary) = camera.target {
+            println!("Sadness :(")
+            
+        }
     }
 }

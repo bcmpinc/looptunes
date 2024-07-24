@@ -37,6 +37,7 @@ fn setup(
 ) {
     commands.spawn((
         Camera2dBundle::default(),
+        MousePos::default(),
     ));
     
     let mut window = windows.single_mut();
@@ -54,11 +55,11 @@ fn setup(
 }
 
 fn hover_cycle(
-    q: Query<&Transform, With<Cycle>>,
-    mut hover: Query<(&mut Transform, &mut Visibility), With<Highlight>>,
-    window: Query<&Window, With<PrimaryWindow>>,
-    camera: Query<&Transform, With<Camera2d>>,
+    cycles: Query<&Transform, (With<Cycle>, Without<Highlight>)>,
+    mut hover: Query<(&mut Transform, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
+    camera: Query<&Camera>,
 ) {
+    let cam = camera.single();
 
 }
 
