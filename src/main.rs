@@ -1,15 +1,17 @@
 use bevy::math::Vec3;
+use bevy::sprite::Mesh2dHandle;
 use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
-use bevy::window::{CursorIcon, Window};
+use bevy::window::{CursorIcon, PrimaryWindow, Window};
 
 mod pancamera; use pancamera::*;
-mod cyclewave;  use cyclewave::*;
+mod cyclewave; use cyclewave::*;
 mod wireframe; use wireframe::*;
+mod micetrack; use micetrack::*;
 
 fn main() {
     App::new()
@@ -19,18 +21,49 @@ fn main() {
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
+            MiceTrack,
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
+        .add_systems(Update, hover_cycle)
         .run();
 }
 
-fn setup(mut commands: Commands, mut windows: Query<&mut Window>) {
-    commands.spawn(Camera2dBundle::default());
+fn setup(
+    mut commands: Commands, 
+    mut windows: Query<&mut Window>,
+    mut meshes: ResMut<Assets<Mesh>>, 
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    commands.spawn((
+        Camera2dBundle::default(),
+    ));
     
     let mut window = windows.single_mut();
     window.cursor.icon = CursorIcon::Pointer;
+
+    commands.spawn((
+        ColorMesh2dBundle{
+            mesh: Mesh2dHandle(meshes.add(Annulus::new(1.00, 1.01).mesh().resolution(16))),
+            material: materials.add(ColorMaterial::from_color(Color::linear_rgb(0.5, 0.5, 0.5))),
+            visibility: Visibility::Hidden,
+            ..default()
+        },
+        Highlight,
+    ));
 }
+
+fn hover_cycle(
+    q: Query<&Transform, With<Cycle>>,
+    mut hover: Query<(&mut Transform, &mut Visibility), With<Highlight>>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    camera: Query<&Transform, With<Camera2d>>,
+) {
+
+}
+
+#[derive(Component)]
+struct Highlight;
 
 struct Node {
     x: f32,

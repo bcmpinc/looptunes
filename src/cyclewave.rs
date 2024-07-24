@@ -92,7 +92,7 @@ fn create_children(
                                 TextSection::new(
                                     item.1.frequency_name(),
                                     TextStyle{
-                                        font_size: 1000.0,
+                                        font_size: 200.0,
                                         ..default()
                                     }
                                 )
@@ -100,7 +100,7 @@ fn create_children(
                             ..default()
                         },
                         text_anchor: Anchor::Center,
-                        transform: Transform::from_scale(Vec3::new(0.0002,0.0002,1.0)),
+                        transform: Transform::from_scale(Vec3::new(0.001,0.001,1.0)),
                         ..default()
                     }
                 );
@@ -135,7 +135,7 @@ pub struct Wave {
     material: Handle<WaveMaterial>,
     average: f32,
 }
-#[allow(dead_code)]
+
 impl Wave {
     pub const LENGTH : usize = 1024;
     pub const SINE     : fn(f32) -> f32 = |x| 0.5 + 0.5 * f32::cos(x * std::f32::consts::TAU);
