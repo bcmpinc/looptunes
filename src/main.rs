@@ -6,27 +6,23 @@ use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
-use bevy::window::{CursorIcon, Window};
-use bevy_mod_picking::debug::DebugPickingMode;
-use bevy_mod_picking::focus::PickingInteraction;
-use bevy_mod_picking::prelude::{GlobalHighlight, HighlightPlugin};
-use bevy_mod_picking::{DefaultPickingPlugins, PickableBundle};
+use bevy::window::{CursorIcon, PrimaryWindow, Window};
 
 mod pancamera; use pancamera::*;
 mod cyclewave; use cyclewave::*;
 mod wireframe; use wireframe::*;
+mod micetrack; use micetrack::*;
 
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
             DefaultPlugins,
-            DefaultPickingPlugins,
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
+            MiceTrack,
         ))
-        .insert_resource(DebugPickingMode::Normal)
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, hover_cycle)
@@ -41,6 +37,7 @@ fn setup(
 ) {
     commands.spawn((
         Camera2dBundle::default(),
+        MousePos::default(),
     ));
     
     let mut window = windows.single_mut();
@@ -58,18 +55,12 @@ fn setup(
 }
 
 fn hover_cycle(
-    cycles: Query<(&Transform, &PickingInteraction), (With<Cycle>, Without<Highlight>)>,
+    cycles: Query<&Transform, (With<Cycle>, Without<Highlight>)>,
     mut hover: Query<(&mut Transform, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
+    camera: Query<&Camera>,
 ) {
-    let mut hover_entity = hover.single_mut();
-    for (transform, pick) in cycles.iter() {
-        if *pick == PickingInteraction::Hovered {
-            *hover_entity.0 = *transform;
-            *hover_entity.1 = Visibility::Visible;
-            return;
-        }
-    }
-    *hover_entity.1 = Visibility::Hidden;
+    let cam = camera.single();
+
 }
 
 #[derive(Component)]
@@ -103,19 +94,16 @@ fn spawn_cyclewaves(
     ];
 
     for node in nodes {
-        commands.spawn((
-            CycleWaveBundle{
-                cycle: Cycle{
-                    color: node.color,
-                    frequency: node.freq,
-                    ..Default::default()
-                },
-                wave: Wave::new(node.f),
-                transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
-                ..default()
+        commands.spawn(CycleWaveBundle{
+            cycle: Cycle{
+                color: node.color,
+                frequency: node.freq,
+                ..Default::default()
             },
-            PickableBundle::default(),
-        ));
+            wave: Wave::new(node.f),
+            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
+            ..default()
+        });
     }
 }
 
