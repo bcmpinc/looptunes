@@ -38,6 +38,8 @@ fn main() {
         .add_systems(Update, (hover_cycle, drag_cycle, scroll_cycle.run_if(is_shift)).chain())
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
+        .add_systems(PostUpdate, play_anything.run_if(backend_has_2048_capacity))
+        .insert_resource(PlayPosition(0))
         .run();
 }
 
@@ -47,7 +49,10 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>, 
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle{
+        transform: Transform::from_scale(Vec3::new(0.01,0.01,1.0)),
+        ..default()
+    });
     
     let mut window = windows.single_mut();
     window.cursor.icon = CursorIcon::Pointer;
@@ -133,7 +138,6 @@ fn scroll_cycle(
     mut q_cycles: Query<&mut Cycle>,
     hover_entity: Res<Hover>,
     mut scroll: EventReader<MouseWheel>,
-
 ) {
     let Some(entity) = hover_entity.entity else {return};
     let Ok(mut cycle) = q_cycles.get_mut(entity) else {return};
@@ -144,6 +148,29 @@ fn scroll_cycle(
 
 #[derive(Component)]
 struct Highlight;
+
+#[derive(Resource)]
+struct PlayPosition(u32);
+
+fn play_anything(
+    q_cycles: Query<(&Cycle,&Wave)>,
+    hover_entity: Res<Hover>,
+    backend: Res<LoopTunesBackend>,
+    mut pos: ResMut<PlayPosition>,
+) {
+    let Some(entity) = hover_entity.entity else {return};
+    let Ok((cycle, wave)) = q_cycles.get(entity) else {return};
+    for i in 0..2048 {
+        let t = (pos.0 + i) as f64 / 48000.0;
+        let wave_pos = t * cycle.frequency();
+        let index = (wave_pos.fract() * 1024.0) as usize;
+        let sample = wave.pattern[index] - wave.average;
+        _ = backend.producer.send(sample);
+    }
+    pos.0 += 2048;
+    pos.0 %= 48000 * 256;
+}
+
 
 struct Node {
     x: f32,
@@ -164,11 +191,11 @@ fn spawn_cyclewaves(
 ) {
     // Example circle data
     let nodes = vec![
-        Node::new(0.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE, 3),
-        Node::new(30.0, 30.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH, 4),
-        Node::new(-20.0, 20.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE, 5),
-        Node::new(30.0, 30.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 6),
-        Node::new(60.0, 10.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 20),
+        Node::new(-2.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE, 63),
+        Node::new(-1.0, 0.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH, 63),
+        Node::new( 0.0, 0.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE, 63),
+        Node::new( 1.0, 0.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 63),
+        Node::new( 2.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 63),
     ];
 
     for node in nodes {

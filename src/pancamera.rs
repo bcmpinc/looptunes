@@ -44,7 +44,7 @@ fn camera_zoom(
     for event in scroll.read() {
         let scale_change = f32::powf(2.0, event.y * ZOOM_SENSITIVITY);
         transform.scale *= Vec3::new(scale_change, scale_change, 1.0);
-        transform.scale = Vec3::max(transform.scale, Vec3::new(0.01, 0.01, 1.0));
+        transform.scale = Vec3::max(transform.scale, Vec3::new(0.002, 0.002, 1.0));
     }
 }
 

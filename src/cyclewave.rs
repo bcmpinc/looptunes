@@ -53,7 +53,7 @@ impl Cycle {
         Self::FREQUENCY_LIST[self.frequency as usize].0
     }
     pub fn size(&self) -> f32 {
-        f32::max(100. / self.frequency().sqrt() as f32, 25.)
+        f32::max(4. / self.frequency().sqrt() as f32, 1.)
     }
     pub fn phase_in_parent(&self) -> f32 {
         self.phase
@@ -155,9 +155,9 @@ fn rotate_cyclewaves(
  */
 #[derive(Component,Clone)]
 pub struct Wave {
-    pattern: [f32;Self::LENGTH],
+    pub pattern: [f32;Self::LENGTH],
     material: Handle<WaveMaterial>,
-    average: f32,
+    pub average: f32,
 }
 
 impl Wave {

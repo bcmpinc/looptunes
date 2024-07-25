@@ -15,10 +15,11 @@ impl Plugin for LoopTunes {
     fn build(&self, app: &mut App) {
         println!("Enabling LoopTunes audio backend Plugin!");
         app.insert_resource(LoopTunesBackend::default());
-        app.add_systems(Update, play_anything);
+        //app.add_systems(Update, play_anything);
     }
 }
 
+#[allow(unused)]
 fn play_anything(
     backend: Res<LoopTunesBackend>,
 ) {
@@ -27,16 +28,21 @@ fn play_anything(
         for _ in 0..2048 {
             let res = backend.producer.send(thread_rng().gen_range(-0.1..0.1));
             if let Err(e) = res {
-                println!("Error: {:?}", e);
-                return
+                panic!("Playback Error: {:?}", e);
             }
         }
     }
 }
 
+pub fn backend_has_2048_capacity(
+    backend: Res<LoopTunesBackend>,
+) -> bool {
+    backend.producer.capacity().unwrap() - backend.producer.len() >= 2048
+}
+
 #[derive(Resource)]
 pub struct LoopTunesBackend {
-    producer: Sender<f32>,
+    pub producer: Sender<f32>,
 }
 impl Default for LoopTunesBackend {
     fn default() -> Self {
