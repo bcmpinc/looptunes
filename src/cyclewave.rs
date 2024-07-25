@@ -15,7 +15,7 @@ impl Plugin for CycleWavePlugin {
         app 
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(SpawnScene, (update_textures, create_children).chain())
-            .add_systems(Update, rotate_cyclewaves)
+            .add_systems(Update, (update_frequency, rotate_cyclewaves).chain())
         ;
     }
 }
@@ -52,8 +52,14 @@ impl Cycle {
     pub fn frequency_name(&self) -> &'static str {
         Self::FREQUENCY_LIST[self.frequency as usize].0
     }
+    pub fn size(&self) -> f32 {
+        f32::max(100. / self.frequency().sqrt() as f32, 25.)
+    }
     pub fn phase_in_parent(&self) -> f32 {
         self.phase
+    }
+    pub fn change_frequency(&mut self, lines: i32) {
+        self.frequency = (self.frequency as i32 + lines).clamp(0, Self::FREQUENCY_LIST.len() as i32 - 1) as u32;
     }
 }
 
@@ -110,6 +116,25 @@ fn create_children(
     }
 }
 
+fn update_frequency(
+    mut q_cycle: Query<(Ref<Cycle>, &mut Transform)>,
+    mut q_text: Query<(&mut Text, &Parent)>,
+) {
+    for (cycle, mut transform) in q_cycle.iter_mut() {
+        if cycle.is_changed() {
+            let scale = cycle.size();
+            transform.scale = Vec3::new(scale, scale, 1.0);
+        }
+    }
+
+    for (mut text, parent) in q_text.iter_mut() {
+        let Ok((cycle, _)) = q_cycle.get_mut(parent.get()) else {continue};
+        if cycle.is_changed() {
+            text.sections[0].value = cycle.frequency_name().into();
+        }
+    }
+}
+
 #[derive(Component,Clone)]
 pub struct WaveCycleImage;
 
@@ -123,7 +148,6 @@ fn rotate_cyclewaves(
         item.1.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);
     }
 }
-
     
 /** 
  * Component describes a free-form waveform.

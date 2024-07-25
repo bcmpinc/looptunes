@@ -1,5 +1,6 @@
 use core::f32;
 
+use bevy::input::mouse::MouseWheel;
 use bevy::math::Vec3;
 use bevy::sprite::Mesh2dHandle;
 use bevy::transform::components::Transform;
@@ -15,6 +16,13 @@ mod cyclewave; use cyclewave::*;
 mod wireframe; use wireframe::*;
 mod micetrack; use micetrack::*;
 
+fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
+    keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
+} 
+fn is_not_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
+    !is_shift(keyboard)
+}
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
@@ -27,9 +35,9 @@ fn main() {
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
-        .add_systems(Update, (hover_cycle, drag_cycle).chain())
+        .add_systems(Update, (hover_cycle, drag_cycle, scroll_cycle.run_if(is_shift)).chain())
         .insert_resource(Hover::default())
-        .configure_sets(Update, (ZoomSystem).run_if(|keyboard: Res<ButtonInput<KeyCode>>| !keyboard.pressed(KeyCode::ShiftLeft) && !keyboard.pressed(KeyCode::ShiftRight)))
+        .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
         .run();
 }
 
@@ -121,21 +129,33 @@ fn drag_cycle(
     }
 }
 
+fn scroll_cycle(
+    mut q_cycles: Query<(&mut Cycle)>,
+    hover_entity: Res<Hover>,
+    mut scroll: EventReader<MouseWheel>,
+
+) {
+    let Some(entity) = hover_entity.entity else {return};
+    let Ok(mut cycle) = q_cycles.get_mut(entity) else {return};
+    for event in scroll.read() {
+        cycle.change_frequency(-event.y as i32);
+    }
+}
+
 #[derive(Component)]
 struct Highlight;
 
 struct Node {
     x: f32,
     y: f32,
-    radius: f32,
     color: LinearRgba,
     f: fn(f32) -> f32,
     freq: u32,
 }
 
 impl Node  {
-    fn new(x: f32, y: f32, radius: f32, color: LinearRgba, f: fn(f32) -> f32, freq: u32) -> Self {
-        Self { x, y, radius, color, f, freq }
+    fn new(x: f32, y: f32, color: LinearRgba, f: fn(f32) -> f32, freq: u32) -> Self {
+        Self { x, y, color, f, freq }
     }
 }
 
@@ -144,11 +164,11 @@ fn spawn_cyclewaves(
 ) {
     // Example circle data
     let nodes = vec![
-        Node::new(0.0, 0.0, 50.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE, 3),
-        Node::new(30.0, 30.0, 75.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH, 4),
-        Node::new(-20.0, 20.0, 60.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE, 5),
-        Node::new(30.0, 30.0, 30.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 6),
-        Node::new(60.0, 10.0, 25.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 20),
+        Node::new(0.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE, 3),
+        Node::new(30.0, 30.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH, 4),
+        Node::new(-20.0, 20.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE, 5),
+        Node::new(30.0, 30.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 6),
+        Node::new(60.0, 10.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 20),
     ];
 
     for node in nodes {
@@ -159,7 +179,7 @@ fn spawn_cyclewaves(
                 ..Default::default()
             },
             wave: Wave::new(node.f),
-            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)).with_scale(Vec3::splat(node.radius)),
+            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)),
             ..default()
         });
     }
