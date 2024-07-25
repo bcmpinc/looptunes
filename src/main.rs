@@ -1,3 +1,5 @@
+use core::f32;
+
 use bevy::math::Vec3;
 use bevy::sprite::Mesh2dHandle;
 use bevy::transform::components::Transform;
@@ -35,18 +37,15 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>, 
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    commands.spawn((
-        Camera2dBundle::default(),
-        MousePos::default(),
-    ));
+    commands.spawn(Camera2dBundle::default());
     
     let mut window = windows.single_mut();
     window.cursor.icon = CursorIcon::Pointer;
 
     commands.spawn((
         ColorMesh2dBundle{
-            mesh: Mesh2dHandle(meshes.add(Annulus::new(1.00, 1.01).mesh().resolution(16))),
-            material: materials.add(ColorMaterial::from_color(Color::linear_rgb(0.5, 0.5, 0.5))),
+            mesh: Mesh2dHandle(meshes.add(Annulus::new(1.05, 1.1).mesh().resolution(16))),
+            material: materials.add(ColorMaterial::from_color(Color::WHITE)),
             visibility: Visibility::Hidden,
             ..default()
         },
@@ -55,12 +54,26 @@ fn setup(
 }
 
 fn hover_cycle(
-    cycles: Query<&Transform, (With<Cycle>, Without<Highlight>)>,
+    cycles: Query<&GlobalTransform, (With<Cycle>, Without<Highlight>)>,
     mut hover: Query<(&mut Transform, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
-    camera: Query<&Camera>,
+    mouse: Res<MousePos>
 ) {
-    let cam = camera.single();
-
+    let (mut h_trans, mut h_vis) = hover.single_mut();
+    let mut nearest = f32::INFINITY;
+    *h_vis = Visibility::Hidden;
+    if mouse.on_screen {
+        for cycle_pos in cycles.iter() {
+            let translation = cycle_pos.translation();
+            let scale = cycle_pos.affine().x_axis[0] / 2.0;
+            let dist = (mouse.position - translation.xy()).length();
+            if dist < scale && nearest > dist + scale {
+                *h_vis = Visibility::Visible;
+                h_trans.translation = cycle_pos.translation();
+                h_trans.scale = Vec3::splat(scale);
+                nearest = dist + scale;
+            }
+        }
+    }
 }
 
 #[derive(Component)]
