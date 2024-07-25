@@ -3,10 +3,11 @@ use std::time::Duration;
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 
-use rodio::source::{SeekError, SineWave};
+use rand::{thread_rng, Rng};
+use rodio::source::SeekError;
 use rodio::{OutputStream, Sink, Source};
 
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use crossbeam_channel::{bounded, Receiver, Sender};
 
 pub struct LoopTunes;
 
@@ -14,13 +15,27 @@ impl Plugin for LoopTunes {
     fn build(&self, app: &mut App) {
         println!("Enabling LoopTunes audio backend Plugin!");
         app.insert_resource(LoopTunesBackend::default());
+        app.add_systems(Update, play_anything);
+    }
+}
+
+fn play_anything(
+    backend: Res<LoopTunesBackend>,
+) {
+    let free_space = backend.producer.capacity().unwrap() - backend.producer.len();
+    println!("Generating {:?} samples", free_space);
+    for _ in 0..free_space {
+        let res = backend.producer.send(thread_rng().gen_range(-0.1..0.1));
+        if let Err(e) = res {
+            println!("Error: {:?}", e);
+            return
+        }
     }
 }
 
 #[derive(Resource)]
 pub struct LoopTunesBackend {
-    producer: SyncSender<f32>,
-    
+    producer: Sender<f32>,
 }
 impl Default for LoopTunesBackend {
     fn default() -> Self {
@@ -29,8 +44,8 @@ impl Default for LoopTunesBackend {
         Box::leak(Box::from(stream)); // Keep stream alive for the duration of the application.
 
         // Create a channel
-        let (tx,rx) = sync_channel::<f32>(4096);
-        let source = LoopSource{consumer: rx};
+        let (tx,rx) = bounded::<f32>(8192);
+        let source = LoopSource{consumer: rx, last: 0.0};
 
         // Get something we can send audio to.
         let sink = Sink::try_new(&stream_handle).unwrap();
@@ -42,7 +57,8 @@ impl Default for LoopTunesBackend {
 }
 
 pub struct LoopSource {
-    consumer: Receiver<f32>
+    consumer: Receiver<f32>,
+    last: f32, // Add bit of ease when stopped.
 }
 
 impl Iterator for LoopSource {
@@ -50,7 +66,12 @@ impl Iterator for LoopSource {
 
     #[inline]
     fn next(&mut self) -> Option<f32> {
-        self.consumer.try_recv().ok()
+        if let Ok(value) = self.consumer.try_recv() {
+            self.last = value;
+            return Some(value);
+        }
+        self.last *= 0.99;
+        return Some(self.last);
     }
 }
 
@@ -78,5 +99,11 @@ impl Source for LoopSource {
     #[inline]
     fn try_seek(&mut self, _: Duration) -> Result<(), SeekError> {
         Ok(())
+    }
+}
+
+impl Drop for LoopSource {
+    fn drop(&mut self) {
+        println!("LoopTunes Backend source died. RIP.")
     }
 }
