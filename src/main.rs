@@ -1,5 +1,3 @@
-use core::f32;
-
 use bevy::input::mouse::MouseWheel;
 use bevy::math::Vec3;
 use bevy::sprite::Mesh2dHandle;
@@ -11,10 +9,11 @@ use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
-mod pancamera; use pancamera::*;
+mod looptunes; use looptunes::*;
 mod cyclewave; use cyclewave::*;
-mod wireframe; use wireframe::*;
 mod micetrack; use micetrack::*;
+mod pancamera; use pancamera::*;
+mod wireframe; use wireframe::*;
 
 fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
     keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
