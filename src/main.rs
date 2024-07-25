@@ -29,6 +29,7 @@ fn main() {
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (hover_cycle, drag_cycle).chain())
         .insert_resource(Hover::default())
+        .configure_sets(Update, (ZoomSystem).run_if(|keyboard: Res<ButtonInput<KeyCode>>| !keyboard.pressed(KeyCode::ShiftLeft) && !keyboard.pressed(KeyCode::ShiftRight)))
         .run();
 }
 

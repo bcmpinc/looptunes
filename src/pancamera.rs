@@ -9,12 +9,14 @@ const ZOOM_SENSITIVITY: f32 = -0.2;
 #[derive(Resource, Clone, Copy)]
 pub struct PanCamera(pub MouseButton);
 
+#[derive(SystemSet,Hash,Debug,PartialEq,Eq,Clone,Copy)] pub struct PanSystem;
+#[derive(SystemSet,Hash,Debug,PartialEq,Eq,Clone,Copy)] pub struct ZoomSystem;
+
 impl Plugin for PanCamera {
     fn build(&self, app: &mut App) {
         app.insert_resource(*self);
-        app.add_systems(Update, camera_movement);
-        app.add_systems(Update, cursor_grab);
-        app.add_systems(Update, camera_zoom);
+        app.add_systems(Update, (cursor_grab, camera_movement).in_set(PanSystem).chain());
+        app.add_systems(Update, camera_zoom.in_set(ZoomSystem));
     }
 }
 
