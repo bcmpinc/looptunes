@@ -23,12 +23,13 @@ fn play_anything(
     backend: Res<LoopTunesBackend>,
 ) {
     let free_space = backend.producer.capacity().unwrap() - backend.producer.len();
-    println!("Generating {:?} samples", free_space);
-    for _ in 0..free_space {
-        let res = backend.producer.send(thread_rng().gen_range(-0.1..0.1));
-        if let Err(e) = res {
-            println!("Error: {:?}", e);
-            return
+    if free_space >= 2048 {
+        for _ in 0..2048 {
+            let res = backend.producer.send(thread_rng().gen_range(-0.1..0.1));
+            if let Err(e) = res {
+                println!("Error: {:?}", e);
+                return
+            }
         }
     }
 }
