@@ -27,8 +27,8 @@ fn main() {
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
-        .add_systems(Update, hover_cycle)
-        .insert_resource(Hover(None))
+        .add_systems(Update, (hover_cycle, drag_cycle).chain())
+        .insert_resource(Hover::default())
         .run();
 }
 
@@ -45,7 +45,7 @@ fn setup(
 
     commands.spawn((
         ColorMesh2dBundle{
-            mesh: Mesh2dHandle(meshes.add(Annulus::new(1.05, 1.1).mesh().resolution(16))),
+            mesh: Mesh2dHandle(meshes.add(Annulus::new(0.53, 0.55).mesh().resolution(16))),
             material: materials.add(ColorMaterial::from_color(Color::WHITE)),
             visibility: Visibility::Hidden,
             ..default()
@@ -55,30 +55,67 @@ fn setup(
 }
 
 #[derive(Resource)]
-pub struct Hover(pub Option<Entity>);
+pub struct Hover {
+    pub entity: Option<Entity>,
+    pub pressed: bool,
+}
+
+impl Default for Hover {
+    fn default() -> Self {
+        Self { 
+            entity: Default::default(), 
+            pressed: Default::default(),
+        }
+    }
+}
 
 fn hover_cycle(
+    mut commands: Commands, 
     cycles: Query<(Entity, &GlobalTransform), (With<Cycle>, Without<Highlight>)>,
-    mut hover: Query<(&mut Transform, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
+    mut hover: Query<(Entity, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
     mouse: Res<MousePos>,
+    buttons: Res<ButtonInput<MouseButton>>,
     mut hover_entity: ResMut<Hover>,
 ) {
-    let (mut h_trans, mut h_vis) = hover.single_mut();
+    // Don't update higlight while button is pressed.
+    hover_entity.pressed = buttons.pressed(MouseButton::Left);
+    if hover_entity.pressed {return;}
+
+    let (h_entity, mut h_vis) = hover.single_mut();
     let mut nearest = f32::INFINITY;
+
+    // Reset hover entity
     *h_vis = Visibility::Hidden;
-    hover_entity.0 = None;
-    if mouse.on_screen {
-        for (entity, cycle_pos) in cycles.iter() {
-            let translation = cycle_pos.translation();
-            let scale = cycle_pos.affine().x_axis[0] / 2.0;
-            let dist = (mouse.position - translation.xy()).length();
-            if dist < scale && nearest > dist + scale {
-                *h_vis = Visibility::Visible;
-                h_trans.translation = cycle_pos.translation();
-                h_trans.scale = Vec3::splat(scale);
-                nearest = dist + scale;
-                hover_entity.0 = Some(entity);
-            }
+    hover_entity.entity = None;
+    if !mouse.on_screen {return;}
+
+    // Find "nearest" circle and move hover entity towards it.
+    for (entity, cycle_pos) in cycles.iter() {
+        let translation = cycle_pos.translation();
+        let scale = cycle_pos.affine().x_axis[0] / 2.0;
+        let dist = (mouse.position - translation.xy()).length();
+        if dist < scale && nearest > dist + scale {
+            *h_vis = Visibility::Visible;
+            commands.entity(h_entity).set_parent(entity);
+            nearest = dist + scale;
+            hover_entity.entity = Some(entity);
+        }
+    }
+}
+
+fn drag_cycle(
+    mut q_cycles: Query<&mut Transform, (With<Cycle>,Without<Camera2d>)>,
+    q_camera: Query<&Transform, (With<Camera2d>, Without<Cycle>)>,
+    mut motion: EventReader<CursorMoved>,
+    hover_entity: Res<Hover>,
+) {
+    if !hover_entity.pressed {return}
+    let Some(cycle_id) = hover_entity.entity else {return};
+    let Ok(mut cycle) = q_cycles.get_mut(cycle_id) else {return};
+    let scale = q_camera.single().scale.x;
+    for event in motion.read() {
+        if let Some(offset) = event.delta {
+            cycle.translation += Vec3::new(offset.x * scale, offset.y * -scale, 0.0);
         }
     }
 }
