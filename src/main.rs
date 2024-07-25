@@ -8,7 +8,7 @@ use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
-use bevy::window::{CursorIcon, PrimaryWindow, Window};
+use bevy::window::{CursorIcon, Window};
 
 mod pancamera; use pancamera::*;
 mod cyclewave; use cyclewave::*;
@@ -28,6 +28,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, hover_cycle)
+        .insert_resource(Hover(None))
         .run();
 }
 
@@ -53,16 +54,21 @@ fn setup(
     ));
 }
 
+#[derive(Resource)]
+pub struct Hover(pub Option<Entity>);
+
 fn hover_cycle(
-    cycles: Query<&GlobalTransform, (With<Cycle>, Without<Highlight>)>,
+    cycles: Query<(Entity, &GlobalTransform), (With<Cycle>, Without<Highlight>)>,
     mut hover: Query<(&mut Transform, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
-    mouse: Res<MousePos>
+    mouse: Res<MousePos>,
+    mut hover_entity: ResMut<Hover>,
 ) {
     let (mut h_trans, mut h_vis) = hover.single_mut();
     let mut nearest = f32::INFINITY;
     *h_vis = Visibility::Hidden;
+    hover_entity.0 = None;
     if mouse.on_screen {
-        for cycle_pos in cycles.iter() {
+        for (entity, cycle_pos) in cycles.iter() {
             let translation = cycle_pos.translation();
             let scale = cycle_pos.affine().x_axis[0] / 2.0;
             let dist = (mouse.position - translation.xy()).length();
@@ -71,6 +77,7 @@ fn hover_cycle(
                 h_trans.translation = cycle_pos.translation();
                 h_trans.scale = Vec3::splat(scale);
                 nearest = dist + scale;
+                hover_entity.0 = Some(entity);
             }
         }
     }
@@ -102,7 +109,7 @@ fn spawn_cyclewaves(
         Node::new(0.0, 0.0, 50.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE, 3),
         Node::new(30.0, 30.0, 75.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH, 4),
         Node::new(-20.0, 20.0, 60.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE, 5),
-        Node::new(20.0, -50.0, 30.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 6),
+        Node::new(30.0, 30.0, 30.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 6),
         Node::new(60.0, 10.0, 25.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 20),
     ];
 
