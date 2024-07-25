@@ -1,8 +1,5 @@
-use std::borrow::BorrowMut;
 
-use bevy::render::camera::RenderTarget;
-use bevy::window::{Cursor, WindowRef};
-use bevy::{app::Plugin, math::Vec3};
+use bevy::app::Plugin;
 use bevy::prelude::*;
 
 // With inspiration from: https://crates.io/crates/bevy_mouse_tracking_plugin.

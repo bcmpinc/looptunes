@@ -9,7 +9,7 @@ use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
-mod looptunes; use looptunes::*;
+mod looptunes; use looptunes::*; 
 mod cyclewave; use cyclewave::*;
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
@@ -129,7 +129,7 @@ fn drag_cycle(
 }
 
 fn scroll_cycle(
-    mut q_cycles: Query<(&mut Cycle)>,
+    mut q_cycles: Query<&mut Cycle>,
     hover_entity: Res<Hover>,
     mut scroll: EventReader<MouseWheel>,
 
