@@ -31,6 +31,7 @@ fn main() {
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
             MiceTrack,
+            LoopTunes,
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
