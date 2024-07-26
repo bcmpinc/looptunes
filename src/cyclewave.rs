@@ -3,9 +3,10 @@ use bevy::asset::Asset;
 use bevy::color::LinearRgba;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
+use bevy::render::mesh::MeshVertexBufferLayoutRef;
 use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureDimension, TextureFormat};
-use bevy::sprite::{Anchor, Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle};
+use bevy::render::render_resource::{AsBindGroup, BlendState, ColorTargetState, Extent3d, FragmentState, RenderPipelineDescriptor, ShaderDefVal, ShaderRef, SpecializedMeshPipelineError, TextureDimension, TextureFormat};
+use bevy::sprite::{Anchor, Material2d, Material2dKey, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle};
 
 use rand::{thread_rng, Rng};
 
@@ -248,6 +249,26 @@ impl Material2d for WaveMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/circle.wgsl".into()
     }
+    
+    fn vertex_shader() -> ShaderRef {
+        ShaderRef::Default
+    }
+    
+    fn depth_bias(&self) -> f32 {
+        0.0
+    }
+    
+    fn specialize(
+        descriptor: &mut RenderPipelineDescriptor,
+        layout: &MeshVertexBufferLayoutRef,
+        key: Material2dKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        let mut original = descriptor.fragment.as_mut().unwrap();
+        let mut target = original.targets[0].as_mut().unwrap();
+        target.blend = Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING);
+        Ok(())
+    }
+    
 }
 
 /**

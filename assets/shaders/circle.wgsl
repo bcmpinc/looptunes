@@ -34,7 +34,7 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let pixels = 2.0*(radius - dist * dist);
     if pixels <= 0.0 && guide <= 0.0 { discard; }
     if pixels <= 1.0 { 
-        return to_straight(blend(color * pixels, WHITE * 0.1 * clamp(guide,0.0,1.0)));
+        return (blend(color * pixels, WHITE * 0.1 * clamp(guide,0.0,1.0)));
     }
     return mix(color, WHITE, pixels-1.0);
 }

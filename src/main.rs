@@ -8,9 +8,9 @@ use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
+//use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
-mod looptunes; use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
-use looptunes::*; 
+mod looptunes; use looptunes::*; 
 mod cyclewave; use cyclewave::*;
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
@@ -27,7 +27,7 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
-            EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
+            //EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
             DefaultPlugins,
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
@@ -47,7 +47,6 @@ fn main() {
 
 fn setup(
     mut commands: Commands, 
-    mut windows: Query<&mut Window>,
     mut meshes: ResMut<Assets<Mesh>>, 
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -56,9 +55,6 @@ fn setup(
         ..default()
     });
     
-    let mut window = windows.single_mut();
-    window.cursor.icon = CursorIcon::Pointer;
-
     commands.spawn((
         ColorMesh2dBundle{
             mesh: Mesh2dHandle(meshes.add(Annulus::new(0.53, 0.55).mesh().resolution(16))),
@@ -73,14 +69,16 @@ fn setup(
 #[derive(Resource)]
 pub struct Hover {
     pub entity: Option<Entity>,
+    pub position: Vec2,
     pub pressed: bool,
 }
 
 impl Default for Hover {
     fn default() -> Self {
         Self { 
-            entity: Default::default(), 
-            pressed: Default::default(),
+            entity: default(), 
+            position: default(), 
+            pressed: default(), 
         }
     }
 }
@@ -92,29 +90,43 @@ fn hover_cycle(
     mouse: Res<MousePos>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut hover_entity: ResMut<Hover>,
+    mut windows: Query<&mut Window>,
 ) {
     // Don't update higlight while button is pressed.
     hover_entity.pressed = buttons.pressed(MouseButton::Left);
-    if hover_entity.pressed {return;}
-
+    if hover_entity.pressed {return}
+    
+    
     let (h_entity, mut h_vis) = hover.single_mut();
     let mut nearest = f32::INFINITY;
-
+    
     // Reset hover entity
     *h_vis = Visibility::Hidden;
     hover_entity.entity = None;
-    if !mouse.on_screen {return;}
+
+    // Reset mouse cursor
+    let mut window = windows.single_mut();
+    window.cursor.icon = CursorIcon::Default;
+    if !mouse.on_screen {return}
 
     // Find "nearest" circle and move hover entity towards it.
     for (entity, cycle_pos) in cycles.iter() {
         let translation = cycle_pos.translation();
         let scale = cycle_pos.affine().x_axis[0] / 2.0;
-        let dist = (mouse.position - translation.xy()).length();
-        if dist < scale && nearest > dist + scale {
+        let pos = (mouse.position - translation.xy()) / scale;
+        let dist = pos.length();
+        let score = (dist + 1.0) * scale;
+        if dist < 1.0 && nearest > score {
             *h_vis = Visibility::Visible;
             commands.entity(h_entity).set_parent(entity);
-            nearest = dist + scale;
+            nearest = score;
             hover_entity.entity = Some(entity);
+            hover_entity.position = pos;
+            if dist < 0.5 {
+                window.cursor.icon = CursorIcon::Grab;
+            } else {
+                window.cursor.icon = CursorIcon::Crosshair;
+            }
         }
     }
 }
@@ -124,14 +136,21 @@ fn drag_cycle(
     q_camera: Query<&Transform, (With<Camera2d>, Without<Cycle>)>,
     mut motion: EventReader<CursorMoved>,
     hover_entity: Res<Hover>,
+    mut windows: Query<&mut Window>,
 ) {
     if !hover_entity.pressed {return}
-    let Some(cycle_id) = hover_entity.entity else {return};
-    let Ok(mut cycle) = q_cycles.get_mut(cycle_id) else {return};
-    let scale = q_camera.single().scale.x;
-    for event in motion.read() {
-        if let Some(offset) = event.delta {
-            cycle.translation += Vec3::new(offset.x * scale, offset.y * -scale, 0.0);
+    let mut window = windows.single_mut();
+    if window.cursor.icon == CursorIcon::Grab {
+        window.cursor.icon = CursorIcon::Grabbing; 
+    }
+    if window.cursor.icon == CursorIcon::Grabbing {
+        let Some(cycle_id) = hover_entity.entity else {return};
+        let Ok(mut cycle) = q_cycles.get_mut(cycle_id) else {return};
+        let scale = q_camera.single().scale.x;
+        for event in motion.read() {
+            if let Some(offset) = event.delta {
+                cycle.translation += Vec3::new(offset.x * scale, offset.y * -scale, 0.0);
+            }
         }
     }
 }
@@ -167,7 +186,7 @@ fn play_anything(
         let wave_pos = t * cycle.frequency();
         let index = (wave_pos.fract() * 1024.0) as usize;
         let sample = wave.pattern[index] - wave.average;
-        _ = backend.producer.send(sample);
+        _ = backend.producer.send(sample * 0.2);
     }
     pos.0 += 2048;
     pos.0 %= 48000 * 256;
