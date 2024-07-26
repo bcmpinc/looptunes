@@ -11,11 +11,11 @@ use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, PrimaryWindow, Window};
-//use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
+use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
-mod looptunes; use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
-use looptunes::*; 
+mod connector; use connector::*;
 mod cyclewave; use cyclewave::*;
+mod looptunes; use looptunes::*; 
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
 mod wireframe; use wireframe::*;
@@ -31,15 +31,16 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
+            EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
             DefaultPlugins.set(
                 AssetPlugin{meta_check: bevy::asset::AssetMetaCheck::Never, ..default()},
             ),
-            EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
             MiceTrack,
             LoopTunes,
+            ConnectorPlugin,
         ))
         .add_systems(Startup, (setup, set_window_title))
         .add_systems(Startup, spawn_cyclewaves)
@@ -301,5 +302,20 @@ fn spawn_cyclewaves(
             ..default()
         });
     }
+
+    commands.spawn(Segment {
+        source: Vec2::new(-2.0,0.0),
+        target: Vec2::new(0.0,2.0),
+        source_size: 0.1,
+        target_size: 0.1,
+    });
+
+    commands.spawn(Segment {
+        source: Vec2::new(2.0,0.0),
+        target: Vec2::new(0.0,2.0),
+        source_size: 0.1,
+        target_size: 0.1,
+    });
+
 }
 
