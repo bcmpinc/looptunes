@@ -4,6 +4,8 @@ use bevy::transform::components::Transform;
 use bevy::prelude::*;
 use bevy::app::{App, Plugin, Update};
 
+use crate::MousePos;
+
 const ZOOM_SENSITIVITY: Vec3 = Vec3::new(0.9, 0.9, 1.0);
 
 #[derive(Resource, Clone, Copy)]
@@ -39,15 +41,21 @@ fn camera_movement(
 fn camera_zoom(
     mut query: Query<&mut Transform, With<Camera2d>>,
     mut scroll: EventReader<MouseWheel>,
+    cursor: Res<MousePos>,
 ) {
     let mut transform = query.single_mut();
+    let mut offset = transform.translation - Vec3::new(cursor.position.x, cursor.position.y, 0.0);
     for event in scroll.read() {
+        transform.translation -= offset;
         if event.y < 0.0 {
             transform.scale /= ZOOM_SENSITIVITY;
+            offset /= ZOOM_SENSITIVITY;
         } else {
             transform.scale *= ZOOM_SENSITIVITY;
+            offset *= ZOOM_SENSITIVITY;
         }
         transform.scale = Vec3::max(transform.scale, Vec3::new(0.002, 0.002, 1.0));
+        transform.translation += offset;
     }
 }
 

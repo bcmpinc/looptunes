@@ -9,13 +9,15 @@ use bevy::sprite::{Anchor, Material2d, Material2dPlugin, MaterialMesh2dBundle, M
 
 use rand::{thread_rng, Rng};
 
+fn never() -> bool {false}
+
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
     fn build(&self, app: &mut App) {
         app 
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(SpawnScene, (update_textures, create_children).chain())
-            .add_systems(Update, (update_frequency, rotate_cyclewaves).chain())
+            .add_systems(Update, (update_frequency, rotate_cyclewaves.run_if(never)).chain())
         ;
     }
 }
