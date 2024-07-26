@@ -51,7 +51,7 @@ impl Default for LoopTunesBackend {
         Box::leak(Box::from(stream)); // Keep stream alive for the duration of the application.
 
         // Create a channel
-        let (tx,rx) = bounded::<f32>(8192);
+        let (tx,rx) = bounded::<f32>(4096);
         let source = LoopSource{consumer: rx, last: 0.0};
 
         // Get something we can send audio to.

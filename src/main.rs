@@ -240,6 +240,7 @@ struct Highlight;
 #[derive(Resource)]
 struct PlayPosition(u32);
 
+const PLAY_CHUNK: u32 = 1024;
 fn play_anything(
     q_cycles: Query<(&Cycle,&Wave)>,
     hover_entity: Res<Hover>,
@@ -248,14 +249,14 @@ fn play_anything(
 ) {
     let Some(entity) = hover_entity.entity else {return};
     let Ok((cycle, wave)) = q_cycles.get(entity) else {return};
-    for i in 0..2048 {
+    for i in 0..PLAY_CHUNK {
         let t = (pos.0 + i) as f64 / 48000.0;
         let wave_pos = t * cycle.frequency();
         let index = (wave_pos.fract() * 1024.0) as usize;
         let sample = wave.pattern[index] - wave.average;
         _ = backend.producer.send(sample * 0.2);
     }
-    pos.0 += 2048;
+    pos.0 += PLAY_CHUNK;
     pos.0 %= 48000 * 256;
 }
 
