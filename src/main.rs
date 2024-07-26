@@ -37,7 +37,7 @@ fn main() {
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
-        .add_systems(Update, (hover_cycle, drag_cycle, scroll_cycle.run_if(is_shift)).chain())
+        .add_systems(Update, (hover_cycle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
         .add_systems(PostUpdate, play_anything.run_if(backend_has_2048_capacity))
@@ -70,6 +70,7 @@ fn setup(
 pub struct Hover {
     pub entity: Option<Entity>,
     pub position: Vec2,
+    pub old_position: Vec2,
     pub pressed: bool,
 }
 
@@ -78,6 +79,7 @@ impl Default for Hover {
         Self { 
             entity: default(), 
             position: default(), 
+            old_position: default(), 
             pressed: default(), 
         }
     }
@@ -139,20 +141,46 @@ fn drag_cycle(
     mut windows: Query<&mut Window>,
 ) {
     if !hover_entity.pressed {return}
+
     let mut window = windows.single_mut();
     if window.cursor.icon == CursorIcon::Grab {
         window.cursor.icon = CursorIcon::Grabbing; 
     }
-    if window.cursor.icon == CursorIcon::Grabbing {
-        let Some(cycle_id) = hover_entity.entity else {return};
-        let Ok(mut cycle) = q_cycles.get_mut(cycle_id) else {return};
-        let scale = q_camera.single().scale.x;
-        for event in motion.read() {
-            if let Some(offset) = event.delta {
-                cycle.translation += Vec3::new(offset.x * scale, offset.y * -scale, 0.0);
-            }
+    if window.cursor.icon != CursorIcon::Grabbing {return}
+
+    let Some(cycle_id) = hover_entity.entity else {return};
+    let Ok(mut cycle) = q_cycles.get_mut(cycle_id) else {return};
+    let scale = q_camera.single().scale.x;
+    for event in motion.read() {
+        if let Some(offset) = event.delta {
+            cycle.translation += Vec3::new(offset.x * scale, offset.y * -scale, 0.0);
         }
     }
+}
+
+fn draw_cycle(
+    q_cycles: Query<&Transform, (With<Cycle>,Without<Camera2d>)>,
+    mut hover_entity: ResMut<Hover>,
+    windows: Query<&mut Window>,
+    mouse: Res<MousePos>,
+) {
+    if !hover_entity.pressed {return}
+    let window = windows.single();
+    if window.cursor.icon != CursorIcon::Crosshair {return}
+
+    let Some(cycle_id) = hover_entity.entity else {return};
+    let Ok(cycle) = q_cycles.get(cycle_id) else {return};
+    
+    let translation = cycle.translation;
+    let scale = cycle.scale.x / 2.0;
+    let pos = (mouse.position - translation.xy()) / scale;
+    let a = hover_entity.position;
+    let b = pos;
+
+    println!("Draw {:?} to {:?}", a, b);
+
+    hover_entity.old_position = a;
+    hover_entity.position = b;
 }
 
 fn scroll_cycle(
