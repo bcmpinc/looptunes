@@ -13,8 +13,7 @@ opt-level = 3
 [dependencies]
 log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] }
 rand = "0.8.5"
-# bevy = {version = "0.14", default-features = false, features = ["bevy_asset","bevy_winit","bevy_core_pipeline","bevy_render","bevy_scene","bevy_sprite","bevy_text","default_font","webgl2","x11"]}
-bevy = {version = "0.14", default-features = false, features = ["android_shared_stdcxx","animation","bevy_animation","bevy_asset","bevy_audio","bevy_color","bevy_core_pipeline","bevy_gilrs","bevy_gizmos","bevy_gltf","bevy_pbr","bevy_render","bevy_scene","bevy_sprite","bevy_state","bevy_text","bevy_ui","bevy_winit","default_font","hdr","ktx2","multi_threaded","png","smaa_luts","sysinfo_plugin","vorbis","webgl2","x11","zstd"]}
+bevy = {version = "0.14", default-features = false, features = ["android_shared_stdcxx","bevy_asset","bevy_core_pipeline","bevy_sprite","bevy_text","bevy_winit","default_font","webgl2","x11"]}
 rodio = { version = "0.19.0", default-features = false }
 crossbeam-channel = "0.5.13"
 
