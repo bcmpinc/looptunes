@@ -290,7 +290,21 @@ fn spawn_cyclewaves(
         Node::new( 2.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 63),
     ];
 
+    let mut segment = commands.spawn(Segment {
+        source: Vec2::new(0.0,-2.0),
+        target: Vec2::new(0.0,2.0),
+        source_size: 1.0,
+        target_size: 1.0,
+    }).id();
+
     for node in nodes {
+        let new_segment = commands.spawn(Segment {
+            source: Vec2::new(0.0,-2.0),
+            target: Vec2::new(0.0,2.0),
+            source_size: 1.0,
+            target_size: 1.0,
+        }).id();
+
         commands.spawn(CycleWaveBundle{
             cycle: Cycle{
                 color: node.color,
@@ -300,22 +314,12 @@ fn spawn_cyclewaves(
             wave: Wave::new(node.f),
             transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)),
             ..default()
+        }).with_children(|parent|{
+            parent.spawn(Bow(segment));
+            parent.spawn(Arrow(new_segment));
         });
+        segment = new_segment;
     }
-
-    commands.spawn(Segment {
-        source: Vec2::new(-2.0,0.0),
-        target: Vec2::new(0.0,2.0),
-        source_size: 0.1,
-        target_size: 0.1,
-    });
-
-    commands.spawn(Segment {
-        source: Vec2::new(2.0,0.0),
-        target: Vec2::new(0.0,2.0),
-        source_size: 0.1,
-        target_size: 0.1,
-    });
 
 }
 
