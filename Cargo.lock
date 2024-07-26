@@ -497,6 +497,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_embedded_assets"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3f3e7b41a9b01b767ba07c4ebb083b2d8d8055e57ddef7e55e502bbfc961505"
+dependencies = [
+ "bevy",
+ "cargo-emit",
+ "futures-io",
+ "futures-lite",
+ "thiserror",
+]
+
+[[package]]
 name = "bevy_encase_derive"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1128,6 +1141,12 @@ dependencies = [
  "slab",
  "thiserror",
 ]
+
+[[package]]
+name = "cargo-emit"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1582e1c9e755dd6ad6b224dcffb135d199399a4568d454bd89fe515ca8425695"
 
 [[package]]
 name = "cc"
@@ -1993,9 +2012,10 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "loop-tunes"
-version = "0.1.0"
+version = "0.3.1"
 dependencies = [
  "bevy",
+ "bevy_embedded_assets",
  "crossbeam-channel",
  "log",
  "rand",

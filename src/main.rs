@@ -13,7 +13,8 @@ use bevy::prelude::*;
 use bevy::window::{CursorIcon, PrimaryWindow, Window};
 //use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
-mod looptunes; use looptunes::*; 
+mod looptunes; use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
+use looptunes::*; 
 mod cyclewave; use cyclewave::*;
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
@@ -30,8 +31,10 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
-            //EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
-            DefaultPlugins,
+            DefaultPlugins.set(
+                AssetPlugin{meta_check: bevy::asset::AssetMetaCheck::Never, ..default()},
+            ),
+            EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
@@ -43,7 +46,7 @@ fn main() {
         .add_systems(Update, (hover_cycle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
-        .add_systems(PostUpdate, play_anything.run_if(backend_has_2048_capacity))
+        .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
         .insert_resource(PlayPosition(0))
         .run();
 }
@@ -240,7 +243,6 @@ struct Highlight;
 #[derive(Resource)]
 struct PlayPosition(u32);
 
-const PLAY_CHUNK: u32 = 1024;
 fn play_anything(
     q_cycles: Query<(&Cycle,&Wave)>,
     hover_entity: Res<Hover>,
@@ -249,14 +251,14 @@ fn play_anything(
 ) {
     let Some(entity) = hover_entity.entity else {return};
     let Ok((cycle, wave)) = q_cycles.get(entity) else {return};
-    for i in 0..PLAY_CHUNK {
+    for i in 0..PLAY_CHUNK as u32 {
         let t = (pos.0 + i) as f64 / 48000.0;
         let wave_pos = t * cycle.frequency();
         let index = (wave_pos.fract() * 1024.0) as usize;
         let sample = wave.pattern[index] - wave.average;
         _ = backend.producer.send(sample * 0.2);
     }
-    pos.0 += PLAY_CHUNK;
+    pos.0 += PLAY_CHUNK as u32;
     pos.0 %= 48000 * 256;
 }
 

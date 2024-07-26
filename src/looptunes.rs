@@ -3,7 +3,6 @@ use std::time::Duration;
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 
-use rand::{thread_rng, Rng};
 use rodio::source::SeekError;
 use rodio::{OutputStream, Sink, Source};
 
@@ -19,25 +18,11 @@ impl Plugin for LoopTunes {
     }
 }
 
-#[allow(unused)]
-fn play_anything(
-    backend: Res<LoopTunesBackend>,
-) {
-    let free_space = backend.producer.capacity().unwrap() - backend.producer.len();
-    if free_space >= 2048 {
-        for _ in 0..2048 {
-            let res = backend.producer.send(thread_rng().gen_range(-0.1..0.1));
-            if let Err(e) = res {
-                panic!("Playback Error: {:?}", e);
-            }
-        }
-    }
-}
-
-pub fn backend_has_2048_capacity(
+pub const PLAY_CHUNK: usize = 1024;
+pub fn backend_has_capacity(
     backend: Res<LoopTunesBackend>,
 ) -> bool {
-    backend.producer.capacity().unwrap() - backend.producer.len() >= 2048
+    backend.producer.capacity().unwrap() - backend.producer.len() >= PLAY_CHUNK
 }
 
 #[derive(Resource)]
@@ -51,7 +36,7 @@ impl Default for LoopTunesBackend {
         Box::leak(Box::from(stream)); // Keep stream alive for the duration of the application.
 
         // Create a channel
-        let (tx,rx) = bounded::<f32>(4096);
+        let (tx,rx) = bounded::<f32>(PLAY_CHUNK*4);
         let source = LoopSource{consumer: rx, last: 0.0};
 
         // Get something we can send audio to.
