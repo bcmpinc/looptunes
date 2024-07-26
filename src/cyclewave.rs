@@ -205,10 +205,10 @@ fn update_textures(
         if item.is_changed() {
             let wave = &mut item.bypass_change_detection();
             wave.average = wave.pattern.iter().sum::<f32>() / 1024.0;
-            fn f32_to_u16(v: &f32) -> u16 {
-                f32::clamp(v*65536.0,0.0,65535.0) as u16
+            fn f32_to_u8(v: &f32) -> u8 {
+                f32::clamp(v*256.0,0.0,256.0) as u8
             }
-            let grayscale_data = wave.pattern.iter().map(f32_to_u16).flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
+            let grayscale_data = wave.pattern.iter().map(f32_to_u8).collect::<Vec<u8>>();
             let image = Image::new(
                 Extent3d {
                     width: 1024,
@@ -217,7 +217,7 @@ fn update_textures(
                 },
                 TextureDimension::D2,
                 grayscale_data,
-                TextureFormat::R16Unorm,
+                TextureFormat::R8Unorm,
                 RenderAssetUsages::RENDER_WORLD,
             );
             let image_handle = textures.add(image);

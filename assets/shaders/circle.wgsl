@@ -30,7 +30,7 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let arg = (PI + atan2(pos.x, pos.y)) / TAU;
     let radius = textureSample(radius_texture, radius_sampler, vec2<f32>(arg, 0.0)).r;
     let dist = (0.9 - length(pos)) / 0.1;
-    let guide = 15.0-abs(dist) / abs(dpdx(pos.x));
+    let guide = 15.0-abs(dist) / fwidth(pos.x);
     let pixels = 2.0*(radius - dist * dist);
     if pixels <= 0.0 && guide <= 0.0 { discard; }
     if pixels <= 1.0 { 

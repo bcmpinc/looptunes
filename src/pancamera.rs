@@ -4,7 +4,7 @@ use bevy::transform::components::Transform;
 use bevy::prelude::*;
 use bevy::app::{App, Plugin, Update};
 
-const ZOOM_SENSITIVITY: f32 = -0.2;
+const ZOOM_SENSITIVITY: Vec3 = Vec3::new(0.9, 0.9, 1.0);
 
 #[derive(Resource, Clone, Copy)]
 pub struct PanCamera(pub MouseButton);
@@ -42,8 +42,11 @@ fn camera_zoom(
 ) {
     let mut transform = query.single_mut();
     for event in scroll.read() {
-        let scale_change = f32::powf(2.0, event.y * ZOOM_SENSITIVITY);
-        transform.scale *= Vec3::new(scale_change, scale_change, 1.0);
+        if event.y < 0.0 {
+            transform.scale /= ZOOM_SENSITIVITY;
+        } else {
+            transform.scale *= ZOOM_SENSITIVITY;
+        }
         transform.scale = Vec3::max(transform.scale, Vec3::new(0.002, 0.002, 1.0));
     }
 }
