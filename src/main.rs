@@ -9,7 +9,8 @@ use bevy::ecs::system::Commands;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, Window};
 
-mod looptunes; use looptunes::*; 
+mod looptunes; use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
+use looptunes::*; 
 mod cyclewave; use cyclewave::*;
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
@@ -26,6 +27,7 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
+            EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
             DefaultPlugins,
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
