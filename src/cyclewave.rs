@@ -83,15 +83,15 @@ fn create_children(
     mut meshes: ResMut<Assets<Mesh>>, 
     mut materials: ResMut<Assets<WaveMaterial>>,
 ) {
-    for item in &q {
-        if item.1.is_added() {
+    for (entity, cycle, wave) in &q {
+        if cycle.is_added() {
             let mesh = Rectangle::default();
-            commands.entity(item.0).with_children(|parent| {
+            commands.entity(entity).with_children(|parent| {
                 parent.spawn((
                     WaveCycleImage,
                     MaterialMesh2dBundle {
                         mesh: Mesh2dHandle(meshes.add(mesh)),
-                        material: item.2.material.clone(),
+                        material: wave.material.clone(),
                         ..Default::default()
                     }
                 ));
@@ -100,7 +100,7 @@ fn create_children(
                         text: Text{
                             sections:vec![
                                 TextSection::new(
-                                    item.1.frequency_name(),
+                                    cycle.frequency_name(),
                                     TextStyle{
                                         font_size: 200.0,
                                         ..default()
@@ -115,7 +115,9 @@ fn create_children(
                     }
                 );
             });
-            materials.get_mut(&item.2.material).unwrap().color = item.1.color;
+        }
+        if cycle.is_changed() {
+            materials.get_mut(&wave.material).unwrap().color = cycle.color;
         }
     }
 }
@@ -147,9 +149,9 @@ fn rotate_cyclewaves(
     q_parent: Query<&Cycle>,
     time: Res<Time>,
 ) {
-    for mut item in q_child.iter_mut() {
-        let frequency = q_parent.get(item.0.get()).unwrap().frequency() as f32;
-        item.1.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);
+    for (parent, mut transform) in q_child.iter_mut() {
+        let frequency = q_parent.get(parent.get()).unwrap().frequency() as f32;
+        transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);
     }
 }
     
