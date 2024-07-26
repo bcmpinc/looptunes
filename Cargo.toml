@@ -1,5 +1,5 @@
 [package]
-name = "cycles"
+name = "loop-tunes"
 version = "0.1.0"
 authors = ["Bauke Conijn <bcmpinc@gmail.com>"]
 edition = "2021"
