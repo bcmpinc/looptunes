@@ -1,3 +1,6 @@
+use std::f32::consts::{PI, TAU};
+use std::mem::swap;
+
 use bevy::input::mouse::MouseWheel;
 use bevy::math::Vec3;
 use bevy::sprite::Mesh2dHandle;
@@ -7,7 +10,7 @@ use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
-use bevy::window::{CursorIcon, Window};
+use bevy::window::{CursorIcon, PrimaryWindow, Window};
 //use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
 mod looptunes; use looptunes::*; 
@@ -35,7 +38,7 @@ fn main() {
             MiceTrack,
             LoopTunes,
         ))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, set_window_title))
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (hover_cycle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
         .insert_resource(Hover::default())
@@ -64,6 +67,14 @@ fn setup(
         },
         Highlight,
     ));
+}
+
+fn set_window_title(
+    mut window_query: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    if let Ok(mut window) = window_query.get_single_mut() {
+        window.title = "Loop Tunes".to_string();
+    } 
 }
 
 #[derive(Resource)]
@@ -118,13 +129,13 @@ fn hover_cycle(
         let pos = (mouse.position - translation.xy()) / scale;
         let dist = pos.length();
         let score = (dist + 1.0) * scale;
-        if dist < 1.0 && nearest > score {
+        if dist < 1.05 && nearest > score {
             *h_vis = Visibility::Visible;
             commands.entity(h_entity).set_parent(entity);
             nearest = score;
             hover_entity.entity = Some(entity);
             hover_entity.position = pos;
-            if dist < 0.5 {
+            if dist < 0.45 {
                 window.cursor.icon = CursorIcon::Grab;
             } else {
                 window.cursor.icon = CursorIcon::Crosshair;
@@ -158,8 +169,12 @@ fn drag_cycle(
     }
 }
 
+fn get_index(pos: Vec2) -> usize {
+    (1024.0 * (PI + f32::atan2(pos.x, -pos.y)) / TAU) as usize
+}
+
 fn draw_cycle(
-    q_cycles: Query<&Transform, (With<Cycle>,Without<Camera2d>)>,
+    mut q_cycles: Query<(&Transform, &mut Wave), (With<Cycle>,Without<Camera2d>)>,
     mut hover_entity: ResMut<Hover>,
     windows: Query<&mut Window>,
     mouse: Res<MousePos>,
@@ -169,7 +184,7 @@ fn draw_cycle(
     if window.cursor.icon != CursorIcon::Crosshair {return}
 
     let Some(cycle_id) = hover_entity.entity else {return};
-    let Ok(cycle) = q_cycles.get(cycle_id) else {return};
+    let Ok((cycle, mut wave)) = q_cycles.get_mut(cycle_id) else {return};
     
     let translation = cycle.translation;
     let scale = cycle.scale.x / 2.0;
@@ -177,7 +192,31 @@ fn draw_cycle(
     let a = hover_entity.position;
     let b = pos;
 
-    println!("Draw {:?} to {:?}", a, b);
+    // Line drawing algorithm
+    // println!("Draw {:?} to {:?}", a, b);
+    let mut ia = get_index(a);
+    let mut ib = get_index(b);
+    let mut va = a.length() * 2.0 - 1.0;
+    let mut vb = b.length() * 2.0 - 1.0;
+    if ia > ib + 512 {
+        ib += 1024;
+    }
+    if ib > ia + 512 {
+        ia += 1024;
+    }
+    if ib < ia {
+        swap(&mut ia, &mut ib);
+        swap(&mut va, &mut vb);
+    }
+    if ia == ib {
+        wave.pattern[ia] = vb;
+    } else {
+        assert!(ia < ib);
+        for i in ia..=ib {
+            let value = va + (vb-va) * (i-ia) as f32 / (ib-ia) as f32;
+            wave.pattern[i % 1024] = value.clamp(0.0,1.0);
+        }
+    }
 
     hover_entity.old_position = a;
     hover_entity.position = b;

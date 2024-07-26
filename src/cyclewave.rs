@@ -225,7 +225,7 @@ fn update_textures(
             );
             let image_handle = textures.add(image);
             materials.get_mut(&wave.material).unwrap().radius = image_handle;
-            println!("Updated texture for {}", wave.material.id());
+            //println!("Updated texture for {}", wave.material.id());
         }
     }
 }
