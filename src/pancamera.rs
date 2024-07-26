@@ -54,7 +54,7 @@ fn camera_zoom(
             transform.scale *= ZOOM_SENSITIVITY;
             offset *= ZOOM_SENSITIVITY;
         }
-        transform.scale = Vec3::max(transform.scale, Vec3::new(0.002, 0.002, 1.0));
+        transform.scale = Vec3::max(transform.scale, Vec3::new(0.0003, 0.0003, 1.0));
         transform.translation += offset;
     }
 }

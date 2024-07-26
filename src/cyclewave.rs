@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use bevy::render::mesh::MeshVertexBufferLayoutRef;
 use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::render_resource::{AsBindGroup, BlendState, ColorTargetState, Extent3d, FragmentState, RenderPipelineDescriptor, ShaderDefVal, ShaderRef, SpecializedMeshPipelineError, TextureDimension, TextureFormat};
+use bevy::render::render_resource::{AsBindGroup, BlendComponent, BlendFactor, BlendOperation, BlendState, Extent3d, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError, TextureDimension, TextureFormat};
 use bevy::sprite::{Anchor, Material2d, Material2dKey, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle};
 
 use rand::{thread_rng, Rng};
@@ -245,6 +245,12 @@ impl WaveMaterial {
     }
 }
 
+const ADD : BlendComponent = BlendComponent{
+    src_factor: BlendFactor::One,
+    dst_factor: BlendFactor::One,
+    operation: BlendOperation::Add,
+};
+
 impl Material2d for WaveMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/circle.wgsl".into()
@@ -260,12 +266,15 @@ impl Material2d for WaveMaterial {
     
     fn specialize(
         descriptor: &mut RenderPipelineDescriptor,
-        layout: &MeshVertexBufferLayoutRef,
-        key: Material2dKey<Self>,
+        _layout: &MeshVertexBufferLayoutRef,
+        _key: Material2dKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        let mut original = descriptor.fragment.as_mut().unwrap();
-        let mut target = original.targets[0].as_mut().unwrap();
-        target.blend = Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING);
+        let original = descriptor.fragment.as_mut().unwrap();
+        let target = original.targets[0].as_mut().unwrap();
+        target.blend = Some(BlendState{
+            color: ADD,
+            alpha: ADD,
+        });
         Ok(())
     }
     
