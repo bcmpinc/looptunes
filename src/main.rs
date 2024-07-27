@@ -62,7 +62,7 @@ fn main() {
         ).chain())
         .add_systems(Update, (colorize, add_circle))
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
-        .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
+        //.add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
         .add_systems(PostUpdate, track_hover)
         .insert_resource(PlayPosition(0))
         .run();
