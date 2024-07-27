@@ -237,6 +237,7 @@ fn connect_cycle(
     mouse: Res<MousePos>,
     keyboard: Res<ButtonInput<KeyCode>>,
     parents: Query<&Parent>,
+    segments: Query<&Segment>,
 ) {
     if !hover.pressed {return}
     let mut window = windows.single_mut();
@@ -244,28 +245,16 @@ fn connect_cycle(
     window.cursor.icon = CursorIcon::Pointer;
 
     // Create a new connector.
-    if connector.arrow == None {
+    if connector.0 == None {
         let Some(child_cycle) = hover.entity else {return};
-        //println!("Creating new connector for {:?}", child_cycle);
-        connector.child_cycle = Some(child_cycle);
-        let segment = commands.spawn(
-            Segment::default(),
-        ).id();
-        connector.bow = Some(commands.spawn(
-            Bow(segment)
-        ).set_parent(child_cycle).id());
-        connector.arrow = Some(commands.spawn(
-            Arrow{
-                segment,
-                child_cycle,
-            }
-        ).id());
+        connector.0 = Some(Segment::spawn(&mut commands, child_cycle));
     }
+    let Some(segment) = connector_segment(&connector, &segments) else {return};
 
     // Attach arrow to hovered cycle.
-    let arrow = connector.arrow.unwrap();
+    let arrow = segment.arrow;
     if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
-        let cc_id = connector.child_cycle.unwrap();
+        let cc_id = segment.child_cycle;
 
         // Don't connect to *cc_id* or any of its children.
         if has_parent(&parents, entity, cc_id) {
@@ -295,38 +284,30 @@ fn connect_drop(
     mut commands: Commands,
     hover: Res<Hover>,
     mut connector: ResMut<Connector>,
-    old_bows: Query<(Entity, &Parent), With<Bow>>,
+    segments: Query<&Segment>,
     parents: Query<&Parent>,
 ) {
     if hover.pressed {return}
-    if connector.arrow == None {return}
+    let Some(segment) = connector_segment(&connector, &segments) else {return};
     //print!("Dropping connector: ");
     
-    let cc_id = connector.child_cycle.unwrap();
+    let cc_id = segment.child_cycle;
     if let Some(parent) = hover.entity {
         if !has_parent(&parents, parent, cc_id) {
             //println!("attached to {:?}", parent);
-            
-            // Remove the old connector
-            for (bow_id, parent) in old_bows.iter() {
-                if parent.get() == cc_id && connector.bow.unwrap() != bow_id {
-                    commands.try_despawn(bow_id);
-                    // This despawns the segment and arrow too.
-                }
-            }
             assert!(cc_id != parent);
             commands.entity(cc_id).set_parent_in_place(parent);
-            *connector = default();
+            connector.0 = None;
             return;
         }
     }
 
     //println!("removing");
     // No new parent, delete the connector
-    commands.try_despawn(connector.arrow);
-    commands.try_despawn(connector.bow);
-    // Segment gets despawned if it's bow no longer exists.
-    *connector = default();
+    commands.try_despawn(segment.arrow);
+    commands.try_despawn(segment.bow);
+    commands.try_despawn(connector.0);
+    connector.0 = None;
 }
 
 fn disconnect_cycle(
@@ -337,7 +318,7 @@ fn disconnect_cycle(
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyX) {return}
-    if connector.arrow != None {return}
+    if connector.0 != None {return}
     let Some(entity) = hover.entity else {return};
     
     commands.entity(entity).remove_parent_in_place();
@@ -404,7 +385,7 @@ fn delete_circle(
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Delete) {return}
-    if connector.arrow != None {return}
+    if connector.0 != None {return}
     let Some(entity) = hover.entity else {return};
     hover.entity = None;
     clear_children_in_place(&mut commands, &hover.into(), &q_children, entity);

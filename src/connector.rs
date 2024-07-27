@@ -21,7 +21,7 @@ impl Plugin for ConnectorPlugin {
             clear_orphaned_segments,
             (clear_unconnected_bows, clear_unconnected_arrows),
         ).chain());
-        app.insert_resource(Connector::default());
+        app.insert_resource(Connector(None));
     }
 }
 
@@ -31,18 +31,32 @@ pub struct Segment {
     pub target: Vec2,
     pub source_size: f32,
     pub target_size: f32,
-    pub bow: Option<Entity>,
+    pub child_cycle: Entity,
+    pub bow: Entity,
+    pub arrow: Entity,
 }
 
-impl Default for Segment {
-    fn default() -> Self {
-        Segment { 
+impl Segment {
+    /** Spawns a new segment originating from child_cycle. */
+    pub fn spawn(commands: &mut Commands, child_cycle: Entity) -> Entity {
+        //println!("Creating new connector for {:?}", child_cycle);
+        let segment = commands.spawn_empty().id();
+        let bow = commands.spawn(
+            Bow(segment)
+        ).set_parent(child_cycle).id();
+        let arrow = commands.spawn(Arrow{
+            segment,
+            child_cycle,
+        }).id();
+        commands.entity(segment).insert(Segment{
             source: default(), 
             target: default(), 
             source_size: 1.0, 
             target_size: 1.0, 
-            bow: None, 
-        }
+            child_cycle,
+            bow,
+            arrow,
+        }).id()
     }
 }
 
@@ -52,18 +66,7 @@ impl Default for Segment {
     pub child_cycle: Entity,
 }
 
-#[derive(Resource)] pub struct Connector {
-    pub bow: Option<Entity>,
-    pub arrow: Option<Entity>,
-    pub child_cycle: Option<Entity>,
-}
-impl Default for Connector {
-    fn default() -> Self { Self { 
-        bow: None, 
-        arrow: None,
-        child_cycle: None,
-    }}
-}
+#[derive(Resource)] pub struct Connector(pub Option<Entity>);
 
 fn create_segment_mesh(
     mut commands: Commands,
@@ -100,8 +103,7 @@ fn clear_orphaned_segments(
     q: Query<(Entity, &Segment)>,
 ) {
     for (entity, seg) in q.iter() {
-        let Some(bow) = seg.bow else {continue};
-        if commands.get_entity(bow).is_none() {
+        if commands.get_entity(seg.bow).is_none() {
             commands.try_despawn(entity);
         }
     }
@@ -123,14 +125,13 @@ fn create_bow_sprite(
 }
 
 fn bow_with_segment(
-    mut q: Query<(Entity,&Bow,&GlobalTransform)>,
+    mut q: Query<(&Bow,&GlobalTransform)>,
     mut segments: Query<&mut Segment>,
 ) {
-    for (bow_id, bow, transform) in q.iter_mut() {
+    for (bow, transform) in q.iter_mut() {
         if let Ok(mut seg) = segments.get_mut(bow.0) {
             seg.source = transform.transform_point(Vec3::new(0.0,-10.0, 0.0)).truncate();
             seg.source_size = transform.affine().x_axis.length();
-            seg.bow = Some(bow_id);
         }
     }
 }
@@ -210,10 +211,11 @@ fn arrow_with_segment(
 fn connector_arrow_tracks_cursor(
     mut q: Query<&mut Transform, (With<Arrow>, Without<Parent>)>,
     connector: Res<Connector>,
+    segments: Query<&Segment>,
     mouse: Res<MousePos>,
 ) {
-    let Some(ent) = connector.arrow else {return};
-    let Ok(mut arrow) = q.get_mut(ent) else {return};
+    let Some(segment) = connector_segment(&connector, &segments) else {return};
+    let Ok(mut arrow) = q.get_mut(segment.arrow) else {return};
     
     // Make arrow follow the cursor
     let delta = arrow.translation.truncate() - mouse.position;
@@ -226,9 +228,11 @@ fn clear_orphaned_arrows(
     mut commands: Commands,
     q: Query<Entity, (With<Arrow>, Without<Parent>)>,
     connector: Res<Connector>,
+    segments: Query<&Segment>,
 ) {
+    let Some(segment) = connector_segment(&connector, &segments) else {return};
     for entity in q.iter() {
-        if connector.arrow != Some(entity) {
+        if segment.arrow != entity {
             commands.try_despawn(entity);
         }
     }
@@ -243,4 +247,11 @@ fn clear_unconnected_arrows(
             commands.try_despawn(id);
         }
     }
+}
+
+pub fn connector_segment<'a> (
+    connector: &Connector,
+    segments: &'a Query<&Segment>,
+) -> Option<&'a Segment> {
+    return segments.get(connector.0?).ok()
 }
