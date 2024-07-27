@@ -16,7 +16,10 @@ impl Plugin for ConnectorPlugin {
             (bow_with_segment,arrow_with_segment),
             position_segment_mesh
         ).chain());
-        app.add_systems(Last, clear_orphaned_segments);
+        app.add_systems(Last, (
+            clear_orphaned_segments,
+            clear_unconnected_arrows,
+        ).chain());
         app.insert_resource(Connector::default());
     }
 }
@@ -97,10 +100,9 @@ fn clear_orphaned_segments(
 ) {
     for (entity, seg) in q.iter() {
         let Some(bow) = seg.bow else {continue};
-        let Some(_) = commands.get_entity(bow) else {
+        if commands.get_entity(bow).is_none() {
             commands.entity(entity).despawn();
-            continue;
-        };
+        }
     }
 }
 
@@ -197,4 +199,15 @@ fn connector_arrow_tracks_cursor(
     let delta_clamped = delta.clamp_length(0.3, 0.3);
     arrow.translation = (mouse.position + delta_clamped).extend(0.0);
     arrow.rotation = Quat::from_rotation_z(delta.to_angle() - PI/2.0);
+}
+
+fn clear_unconnected_arrows(
+    mut commands: Commands,
+    q: Query<(Entity, &Arrow)>,
+) {
+    for (id, arrow) in q.iter() {
+        if commands.get_entity(arrow.segment).is_none() {
+            commands.entity(id).despawn();
+        }
+    }
 }

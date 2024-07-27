@@ -229,10 +229,9 @@ fn connect_cycle(
     if window.cursor.icon != CursorIcon::Pointer {return}
 
     // Create a new connector.
-    // TODO: reuse old connector?
     if connector.arrow == None {
         let Some(child_cycle) = hover.entity else {return};
-        println!("Creating new connector for {:?}", child_cycle);
+        //println!("Creating new connector for {:?}", child_cycle);
         connector.child_cycle = Some(child_cycle);
         let segment = commands.spawn(
             Segment::default(),
@@ -252,6 +251,8 @@ fn connect_cycle(
     let arrow = connector.arrow.unwrap();
     if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
         let cc_id = connector.child_cycle.unwrap();
+
+        // TODO: filter out children of cc_id as well.
         if cc_id != entity {
             hover.entity = Some(entity);
             hover.position = position;
@@ -276,16 +277,26 @@ fn connect_drop(
     mut commands: Commands,
     hover: Res<Hover>,
     mut connector: ResMut<Connector>,
+    old_bows: Query<(Entity, &Parent), With<Bow>>,
 ) {
     if hover.pressed {return}
     if connector.arrow == None {return}
-    print!("Dropping connector: ");
+    //print!("Dropping connector: ");
     
     if let Some(parent) = hover.entity {
-        println!("attached to {:?}", parent);
-        commands.entity(connector.child_cycle.unwrap()).set_parent_in_place(parent);
+        let cc_id = connector.child_cycle.unwrap();
+        //println!("attached to {:?}", parent);
+        
+        // Remove the old connector
+        for (bow_id, parent) in old_bows.iter() {
+            if parent.get() == cc_id && connector.bow.unwrap() != bow_id {
+                commands.entity(bow_id).despawn();
+                // This despawns the segment and arrow too.
+            }
+        }
+        commands.entity(cc_id).set_parent_in_place(parent);
     } else {
-        println!("removing");
+        //println!("removing");
         // No new parent, delete the connector
         commands.entity(connector.arrow.unwrap()).despawn();
         commands.entity(connector.bow.unwrap()).despawn();
