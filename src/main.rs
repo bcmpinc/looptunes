@@ -214,6 +214,17 @@ fn drag_cycle(
     }
 }
 
+/** Checks whether child is an (grand-)*child of parent. */
+fn has_parent(parents: &Query<&Parent>, mut child: Entity, parent: Entity) -> bool {
+    loop {
+        if child == parent {return true}
+        match parents.get(child) {
+            Ok(e) => {child = e.get();},
+            Err(_) => return false,
+        }
+    }
+}
+
 fn connect_cycle(
     mut commands: Commands,
     windows: Query<&mut Window>,
@@ -223,6 +234,7 @@ fn connect_cycle(
     mut connector: ResMut<Connector>,
     mouse: Res<MousePos>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    parents: Query<&Parent>,
 ) {
     if !hover.pressed {return}
     let window = windows.single();
@@ -252,8 +264,8 @@ fn connect_cycle(
     if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
         let cc_id = connector.child_cycle.unwrap();
 
-        // TODO: filter out children of cc_id as well.
-        if cc_id != entity {
+        // Don't connect to *cc_id* or any of its children.
+        if !has_parent(&parents, entity, cc_id) {
             hover.entity = Some(entity);
             hover.position = position;
             commands.entity(arrow).set_parent(entity);
