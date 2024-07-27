@@ -20,6 +20,7 @@ mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
+mod utilities; use utilities::*;
 mod wireframe; use wireframe::*;
 
 fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
@@ -58,7 +59,7 @@ fn main() {
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (
             hover_cycle, 
-            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift)),
+            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift), disconnect_cycle),
             connect_drop
         ).chain())
         .add_systems(Update, (colorize, add_circle))
@@ -110,22 +111,23 @@ pub struct Hover {
 /** Moves the Higlight entity to whatever the Hover resource points to. */
 fn track_hover(
     mut commands: Commands, 
-    mut entity: Query<(Entity, &mut Visibility, Option<&Parent>), With<Highlight>>,
+    mut entity: Query<(&mut Visibility, Option<&Parent>), With<Highlight>>,
     hover: Res<Hover>,
 ){
     use Visibility::*;
-    let (entity, mut visible, parent) = entity.single_mut();
+    let (mut visible, parent) = entity.get_mut(hover.highlight).unwrap();
     match hover.entity {
         Some(hover_entity) => {
             if parent == None || parent.unwrap().get() != hover_entity {
-                commands.entity(entity).set_parent(hover_entity);
+                assert!(hover.highlight != hover_entity);
+                commands.entity(hover.highlight).set_parent(hover_entity);
             }
             if *visible != Visible {
                 *visible = Visible;
             }
         },
         None if *visible != Hidden => {
-            commands.entity(entity).remove_parent();
+            commands.entity(hover.highlight).remove_parent();
             *visible = Hidden;
         },
         _ => {}
@@ -271,6 +273,7 @@ fn connect_cycle(
         } else {
             hover.entity = Some(entity);
             hover.position = position;
+            assert!(arrow != entity);
             commands.entity(arrow).set_parent(entity);
             
             let mut cc = cycles2.get_mut(cc_id).unwrap();
@@ -293,31 +296,55 @@ fn connect_drop(
     hover: Res<Hover>,
     mut connector: ResMut<Connector>,
     old_bows: Query<(Entity, &Parent), With<Bow>>,
+    parents: Query<&Parent>,
 ) {
     if hover.pressed {return}
     if connector.arrow == None {return}
     //print!("Dropping connector: ");
     
+    let cc_id = connector.child_cycle.unwrap();
     if let Some(parent) = hover.entity {
-        let cc_id = connector.child_cycle.unwrap();
-        //println!("attached to {:?}", parent);
-        
-        // Remove the old connector
-        for (bow_id, parent) in old_bows.iter() {
-            if parent.get() == cc_id && connector.bow.unwrap() != bow_id {
-                commands.entity(bow_id).despawn();
-                // This despawns the segment and arrow too.
+        if !has_parent(&parents, parent, cc_id) {
+            //println!("attached to {:?}", parent);
+            
+            // Remove the old connector
+            for (bow_id, parent) in old_bows.iter() {
+                if parent.get() == cc_id && connector.bow.unwrap() != bow_id {
+                    commands.try_despawn(bow_id);
+                    // This despawns the segment and arrow too.
+                }
             }
+            assert!(cc_id != parent);
+            commands.entity(cc_id).set_parent_in_place(parent);
+            *connector = default();
+            return;
         }
-        commands.entity(cc_id).set_parent_in_place(parent);
-    } else {
-        //println!("removing");
-        // No new parent, delete the connector
-        commands.entity(connector.arrow.unwrap()).despawn();
-        commands.entity(connector.bow.unwrap()).despawn();
-        // Segment gets despawned if it's bow no longer exists.
     }
+
+    //println!("removing");
+    // No new parent, delete the connector
+    commands.try_despawn(connector.arrow);
+    commands.try_despawn(connector.bow);
+    // Segment gets despawned if it's bow no longer exists.
     *connector = default();
+}
+
+fn disconnect_cycle(
+    mut commands: Commands,
+    hover: Res<Hover>,
+    old_bows: Query<(Entity, &Parent), With<Bow>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if !keyboard.just_pressed(KeyCode::KeyX) {return}
+    let Some(entity) = hover.entity else {return};
+    
+    commands.entity(entity).remove_parent_in_place();
+    for (bow_id, parent) in old_bows.iter() {
+        if parent.get() == entity {
+            commands.try_despawn(bow_id);
+            // This despawns the segment and arrow too.
+        }
+    }
 }
 
 fn clone_circle(
@@ -348,6 +375,25 @@ fn clone_circle(
     hover.entity = Some(entity.id());
 }
 
+fn clear_children_in_place(
+    commands: &mut Commands,
+    hover: &Res<Hover>,
+    q_children: &Query<&Children>,
+    parent: Entity,
+) {
+    if let Ok(children) = q_children.get(parent) {
+        for child in children {
+            if let Some(mut c) = commands.get_entity(*child) {
+                if *child == hover.highlight {
+                    c.remove_parent();
+                } else {
+                    c.remove_parent_in_place();
+                }
+            }
+        }
+    }
+}
+
 fn delete_circle(
     mut commands: Commands,
     mut hover: ResMut<Hover>,
@@ -357,13 +403,8 @@ fn delete_circle(
     if !keyboard.just_pressed(KeyCode::Delete) {return}
     let Some(entity) = hover.entity else {return};
     hover.entity = None;
-
-    if let Ok(children) = q_children.get(entity) {
-        for child in children {
-            commands.entity(*child).remove_parent_in_place();
-        }
-    }
-    commands.entity(entity).despawn();
+    clear_children_in_place(&mut commands, &hover.into(), &q_children, entity);
+    commands.try_despawn(entity);
 }
 
 fn get_index(pos: Vec2) -> usize {

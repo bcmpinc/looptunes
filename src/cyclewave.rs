@@ -10,6 +10,8 @@ use bevy::sprite::{Anchor, Material2d, Material2dKey, Material2dPlugin, Material
 
 use rand::{thread_rng, Rng};
 
+use crate::CommandsExt;
+
 fn never() -> bool {false}
 
 pub struct CycleWavePlugin;
@@ -134,7 +136,7 @@ fn clean_orphans(
     q: Query<Entity, (With<WaveSubComponent>, Without<Parent>)>
 ) {
     for entity in q.iter() {
-        commands.entity(entity).despawn();
+        commands.try_despawn(entity);
     }
 }
 
