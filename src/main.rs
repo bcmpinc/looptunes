@@ -10,7 +10,7 @@ use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
-use bevy::window::{CursorIcon, PresentMode, PrimaryWindow, Window, WindowTheme};
+use bevy::window::{CursorIcon, PresentMode, Window, WindowTheme};
 use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
 use rand::{thread_rng, Rng};
@@ -54,9 +54,9 @@ fn main() {
             LoopTunes,
             ConnectorPlugin,
         ))
-        .add_systems(Startup, (setup))
+        .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
-        .add_systems(Update, (hover_cycle, clone_circle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
+        .add_systems(Update, (hover_cycle, delete_circle, clone_circle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
         .add_systems(Update, (colorize, add_circle))
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
@@ -209,6 +209,21 @@ fn clone_circle(
     hover_entity.entity = Some(entity.id());
 }
 
+fn delete_circle(
+    mut commands: Commands,
+    mut hover_res: ResMut<Hover>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut hover: Query<(Entity, &mut Visibility), With<Highlight>>,
+) {
+    if !keyboard.just_pressed(KeyCode::Delete) {return}
+    let Some(entity) = hover_res.entity else {return};
+    // println!("Deleting {:?}", entity);
+    let (hover_entity, mut hover_visible) = hover.single_mut();
+    commands.entity(hover_entity).remove_parent();
+    *hover_visible = Visibility::Hidden;
+    commands.entity(entity).despawn_recursive();
+    hover_res.entity = None;
+}
 
 fn get_index(pos: Vec2) -> usize {
     (1024.0 * (PI + f32::atan2(pos.x, -pos.y)) / TAU) as usize
