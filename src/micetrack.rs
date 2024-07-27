@@ -19,6 +19,7 @@ impl Plugin for MiceTrack {
 pub struct MousePos {
     pub position: Vec2,
     pub on_screen: bool,
+    pub zoom: f32,
 }
 
 impl Default for MousePos {
@@ -26,16 +27,18 @@ impl Default for MousePos {
         Self {
             position: default(),
             on_screen: false,
+            zoom: 1.0,
         }
     }
 }
 
 fn tracking (
-    q_mouse: Query<(&Camera, &GlobalTransform)>,
+    q_camera: Query<(&Camera, &GlobalTransform)>,
     q_window: Query<&Window>,
     mut pos: ResMut<MousePos>,
 ) {
-    let (camera, camera_transform) = q_mouse.single();
+    let (camera, camera_transform) = q_camera.single();
+    pos.zoom = camera_transform.affine().x_axis.length();
     let window = q_window.single();
     if let Some(viewport_position) = window.cursor_position() {
         pos.position = camera.viewport_to_world_2d(camera_transform, viewport_position).unwrap();

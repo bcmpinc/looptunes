@@ -139,7 +139,7 @@ fn hover_cycle(
             nearest = score;
             hover_entity.entity = Some(entity);
             hover_entity.position = pos;
-            if dist < 0.45 {
+            if dist < 0.45 || scale / mouse.zoom < 200.0 {
                 window.cursor.icon = CursorIcon::Grab;
             } else {
                 window.cursor.icon = CursorIcon::Crosshair;
