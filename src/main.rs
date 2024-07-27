@@ -332,10 +332,12 @@ fn connect_drop(
 fn disconnect_cycle(
     mut commands: Commands,
     hover: Res<Hover>,
+    connector: Res<Connector>,
     old_bows: Query<(Entity, &Parent), With<Bow>>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyX) {return}
+    if connector.arrow != None {return}
     let Some(entity) = hover.entity else {return};
     
     commands.entity(entity).remove_parent_in_place();
@@ -397,10 +399,12 @@ fn clear_children_in_place(
 fn delete_circle(
     mut commands: Commands,
     mut hover: ResMut<Hover>,
+    connector: Res<Connector>,
     q_children: Query<&Children>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Delete) {return}
+    if connector.arrow != None {return}
     let Some(entity) = hover.entity else {return};
     hover.entity = None;
     clear_children_in_place(&mut commands, &hover.into(), &q_children, entity);
