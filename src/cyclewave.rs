@@ -19,6 +19,7 @@ impl Plugin for CycleWavePlugin {
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(SpawnScene, (update_textures, create_children).chain())
             .add_systems(Update, (update_frequency, rotate_cyclewaves.run_if(never)).chain())
+            .add_systems(PostUpdate, clean_orphans)
         ;
     }
 }
@@ -79,6 +80,8 @@ impl Default for Cycle {
     }
 }
 
+#[derive(Component)] struct WaveSubComponent;
+
 fn create_children(
     mut commands: Commands,
     q: Query<(Entity,Ref<Cycle>,&Wave)>,
@@ -95,9 +98,10 @@ fn create_children(
                         mesh: Mesh2dHandle(meshes.add(mesh)),
                         material: wave.material.clone(),
                         ..Default::default()
-                    }
+                    },
+                    WaveSubComponent,
                 ));
-                parent.spawn(
+                parent.spawn((
                     Text2dBundle{
                         text: Text{
                             sections:vec![
@@ -114,13 +118,23 @@ fn create_children(
                         text_anchor: Anchor::Center,
                         transform: Transform::from_scale(Vec3::new(0.001,0.001,1.0)),
                         ..default()
-                    }
-                );
+                    },
+                    WaveSubComponent,
+                ));
             });
         }
         if cycle.is_changed() {
             materials.get_mut(&wave.material).unwrap().color = cycle.color;
         }
+    }
+}
+
+fn clean_orphans(
+    mut commands: Commands,
+    q: Query<Entity, (With<WaveSubComponent>, Without<Parent>)>
+) {
+    for entity in q.iter() {
+        commands.entity(entity).despawn();
     }
 }
 

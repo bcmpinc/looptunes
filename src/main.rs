@@ -58,7 +58,8 @@ fn main() {
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (
             hover_cycle, 
-            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift))
+            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift)),
+            connect_drop
         ).chain())
         .add_systems(Update, (colorize, add_circle))
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
@@ -227,8 +228,11 @@ fn connect_cycle(
     let window = windows.single();
     if window.cursor.icon != CursorIcon::Pointer {return}
 
+    // Create a new connector.
+    // TODO: reuse old connector?
     if connector.arrow == None {
         let Some(child_cycle) = hover.entity else {return};
+        println!("Creating new connector for {:?}", child_cycle);
         connector.child_cycle = Some(child_cycle);
         let segment = commands.spawn(
             Segment::default(),
@@ -244,8 +248,8 @@ fn connect_cycle(
         ).id());
     }
 
+    // Attach arrow to hovered cycle.
     let arrow = connector.arrow.unwrap();
-
     if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
         let cc_id = connector.child_cycle.unwrap();
         if cc_id != entity {
@@ -259,7 +263,6 @@ fn connect_cycle(
                 phase = (16.0 * phase).round() / 16.0;
             }
             cc.phase = phase % 1.0;
-            println!("Phase {:?}", cc.phase);
             return
         }
     }
@@ -270,10 +273,25 @@ fn connect_cycle(
 }
 
 fn connect_drop(
-    mut hover: ResMut<Hover>,
-
+    mut commands: Commands,
+    hover: Res<Hover>,
+    mut connector: ResMut<Connector>,
 ) {
-
+    if hover.pressed {return}
+    if connector.arrow == None {return}
+    print!("Dropping connector: ");
+    
+    if let Some(parent) = hover.entity {
+        println!("attached to {:?}", parent);
+        commands.entity(connector.child_cycle.unwrap()).set_parent_in_place(parent);
+    } else {
+        println!("removing");
+        // No new parent, delete the connector
+        commands.entity(connector.arrow.unwrap()).despawn();
+        commands.entity(connector.bow.unwrap()).despawn();
+        // Segment gets despawned if it's bow no longer exists.
+    }
+    *connector = default();
 }
 
 fn clone_circle(
@@ -307,13 +325,19 @@ fn clone_circle(
 fn delete_circle(
     mut commands: Commands,
     mut hover: ResMut<Hover>,
+    q_children: Query<&Children>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Delete) {return}
     let Some(entity) = hover.entity else {return};
     hover.entity = None;
-    commands.entity(hover.highlight).remove_parent();
-    commands.entity(entity).despawn_recursive();
+
+    if let Ok(children) = q_children.get(entity) {
+        for child in children {
+            commands.entity(*child).remove_parent_in_place();
+        }
+    }
+    commands.entity(entity).despawn();
 }
 
 fn get_index(pos: Vec2) -> usize {

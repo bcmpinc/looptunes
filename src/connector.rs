@@ -10,7 +10,7 @@ pub struct ConnectorPlugin;
 impl Plugin for ConnectorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
-        app.add_systems(Update, (bow_tracks_segment, update_connector));
+        app.add_systems(Update, (bow_tracks_segment, connector_arrow_tracks_cursor));
         app.add_systems(PostUpdate, (
             arrow_copy_phase,
             (bow_with_segment,arrow_with_segment),
@@ -161,10 +161,10 @@ fn create_arrow_sprite(
 }
 
 fn arrow_copy_phase(
-    mut q: Query<(&Arrow,&mut Transform,&Parent), With<Parent>>,
+    mut q: Query<(&Arrow,&mut Transform), With<Parent>>,
     cycles: Query<&Cycle>,
 ) {
-    for (arrow, mut transform, parent) in q.iter_mut() {
+    for (arrow, mut transform) in q.iter_mut() {
         if let Ok(cycle) = cycles.get(arrow.child_cycle) {
             transform.rotation = Quat::from_rotation_z(-cycle.phase_in_parent() * TAU);
             transform.translation = transform.rotation * ARROW_POSITION;
@@ -184,7 +184,7 @@ fn arrow_with_segment(
     }
 }
 
-fn update_connector(
+fn connector_arrow_tracks_cursor(
     mut q: Query<&mut Transform, (With<Arrow>, Without<Parent>)>,
     connector: Res<Connector>,
     mouse: Res<MousePos>,
