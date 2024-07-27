@@ -147,6 +147,8 @@ fn hover_cycle(
             hover_entity.position = pos;
             if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
                 window.cursor.icon = CursorIcon::Copy;
+            } else if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+                window.cursor.icon = CursorIcon::Pointer;
             } else if dist < 0.45 || scale / mouse.zoom < 200.0 {
                 window.cursor.icon = CursorIcon::Grab;
             } else {
@@ -330,16 +332,14 @@ fn spawn_cyclewaves(
     let mut segment = commands.spawn(Segment {
         source: Vec2::new(0.0,-2.0),
         target: Vec2::new(0.0,2.0),
-        source_size: 1.0,
-        target_size: 1.0,
+        ..default()
     }).id();
 
     for (x,y,color,f) in nodes {
         let new_segment = commands.spawn(Segment {
             source: Vec2::new(0.0,-2.0),
             target: Vec2::new(0.0,2.0),
-            source_size: 1.0,
-            target_size: 1.0,
+            ..default()
         }).id();
 
         commands.spawn(CycleWaveBundle{
@@ -384,7 +384,7 @@ fn add_circle(
         _ if keyboard.just_pressed(KeyCode::Digit5) => Wave::NOISE,
         _ if keyboard.just_pressed(KeyCode::Digit6) => |v: f32| if v < 0.25 {1.0} else {0.0},
         _ if keyboard.just_pressed(KeyCode::Digit7) => |v: f32| if v < 0.125 {1.0} else {0.0},
-        _ if keyboard.just_pressed(KeyCode::Digit8) => |v: f32| f32::exp(-16.0 * v),
+        _ if keyboard.just_pressed(KeyCode::Digit8) => |v: f32| f32::exp(-4.0 * v),
         _ if keyboard.just_pressed(KeyCode::Digit9) => |v: f32| f32::clamp(1.0 - f32::abs(1.0 - 4.0*v), 0.0, 1.0),
         _ if keyboard.just_pressed(KeyCode::Digit0) => |v: f32| f32::clamp(2.0 - f32::abs(2.0 - 8.0*v), 0.0, 1.0),
         _ => return

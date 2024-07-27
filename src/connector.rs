@@ -10,6 +10,7 @@ impl Plugin for ConnectorPlugin {
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
         app.add_systems(Update, bow_tracks_segment);
         app.add_systems(PostUpdate, (position_segment_mesh,bow_with_segment,arrow_with_segment));
+        app.add_systems(Last, clear_orphaned_segments);
     }
 }
 
@@ -19,6 +20,19 @@ pub struct Segment {
     pub target: Vec2,
     pub source_size: f32,
     pub target_size: f32,
+    pub bow: Option<Entity>,
+}
+
+impl Default for Segment {
+    fn default() -> Self {
+        Segment { 
+            source: default(), 
+            target: default(), 
+            source_size: 1.0, 
+            target_size: 1.0, 
+            bow: None, 
+        }
+    }
 }
 
 #[derive(Component)] pub struct Bow(pub Entity);
@@ -54,6 +68,19 @@ fn position_segment_mesh(
     }
 }
 
+fn clear_orphaned_segments(
+    mut commands: Commands,
+    q: Query<(Entity, &Segment)>,
+) {
+    for (entity, seg) in q.iter() {
+        let Some(bow) = seg.bow else {continue};
+        let Some(_) = commands.get_entity(bow) else {
+            commands.entity(entity).despawn();
+            continue;
+        };
+    }
+}
+
 const BOW_POSITION: Vec3 = Vec3::new(0.0,-0.53,0.0);
 fn create_bow_sprite(
     mut commands: Commands,
@@ -70,13 +97,14 @@ fn create_bow_sprite(
 }
 
 fn bow_with_segment(
-    mut q: Query<(&Bow,&GlobalTransform)>,
+    mut q: Query<(Entity,&Bow,&GlobalTransform)>,
     mut segments: Query<&mut Segment>,
 ) {
-    for (bow, transform) in q.iter_mut() {
+    for (bow_id, bow, transform) in q.iter_mut() {
         if let Ok(mut seg) = segments.get_mut(bow.0) {
             seg.source = transform.transform_point(Vec3::new(0.0,-10.0, 0.0)).truncate();
             seg.source_size = transform.affine().x_axis.length();
+            seg.bow = Some(bow_id);
         }
     }
 }
