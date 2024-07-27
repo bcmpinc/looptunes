@@ -1,15 +1,20 @@
 # Loop-Tunes
 A simple chip-tune music creation sandbox game. Made for bevy-jam 5. Still in early development
 
-https://bcmpinc.itch.io/loop-tunes
+Available on:
+
+- [itch.io](https://bcmpinc.itch.io/loop-tunes)
+- [github](https://github.com/bcmpinc/looptunes)
 
 ## Controls:
 
 - Hover circles to listen to them.
 - Drag the screen with the right mouse button.
 - Drag circles with the left mouse button.
-- Zoom using the scroll wheel
-- Change the frequency of circles with shift + scroll wheel
+- Draw on circles with the left mouse button when zoomed in.
+- Zoom using the scroll wheel.
+- Change the frequency of circles with shift + scroll wheel.
+- Change the color of circles with 'c'.
 
 ## License
 
