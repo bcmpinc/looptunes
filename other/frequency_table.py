@@ -6,12 +6,43 @@ def f(x,n):
         val += '.0'
     print(f'("{n}",{val}), ',end='')
 
-f(1/256,"4m16s")
-f(1/64, "1m6s")
-f(1/16, "16s")
-f(1/4, "4s")
-f(1, "1s")
-f(4, "1/4")
+def g(x):
+    y = 1/x
+    if x<1:
+        if (y * 3) % 3 > 0:
+            return f(y, "3/" + str(int(3*y)))
+        return f(y, "1/" + str(int(y)))
+    if x>60:
+        return f(y, f'{x // 60}m{x % 60}s')
+    return f(y, f'{x % 60}s')
+
+
+g(256)
+g(192)
+g(128)
+g(96)
+g(64)
+g(48)
+g(32)
+g(24)
+g(16)
+g(12)
+g(8)
+g(6)
+g(4)
+g(3)
+g(2)
+print()
+g(3/2)
+g(1)
+g(3/4)
+g(1/2)
+g(3/8)
+g(1/4)
+g(3/16)
+g(1/8)
+g(3/32)
+g(1/16)
 print()
 
 def n(x):

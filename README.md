@@ -15,6 +15,8 @@ Available on:
 - Zoom using the scroll wheel.
 - Change the frequency of circles with shift + scroll wheel.
 - Change the color of circles with 'c'.
+- Use the 0-9 keys to add new circles.
+- Hold shift to insert new circles with 1Hz instead of 440Hz.
 
 ## License
 

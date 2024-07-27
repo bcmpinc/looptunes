@@ -18,7 +18,8 @@ mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
-mod wireframe; use wireframe::*;
+mod wireframe; use rand::{thread_rng, Rng};
+use wireframe::*;
 
 fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
     keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
@@ -45,7 +46,7 @@ fn main() {
         .add_systems(Startup, (setup, set_window_title))
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (hover_cycle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
-        .add_systems(Update, colorize)
+        .add_systems(Update, (colorize, add_circle))
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
         .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
@@ -65,7 +66,7 @@ fn setup(
     
     commands.spawn((
         ColorMesh2dBundle{
-            mesh: Mesh2dHandle(meshes.add(Annulus::new(0.53, 0.55).mesh().resolution(16))),
+            mesh: Mesh2dHandle(meshes.add(Annulus::new(0.54, 0.55).mesh().resolution(16))),
             material: materials.add(ColorMaterial::from_color(Color::WHITE)),
             visibility: Visibility::Hidden,
             ..default()
@@ -239,18 +240,6 @@ fn scroll_cycle(
     }
 }
 
-fn colorize(
-    hover_entity: Res<Hover>,
-    mut q_cycles: Query<&mut Cycle>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    if !keyboard.pressed(KeyCode::KeyC) {return}
-    let Some(ent) = hover_entity.entity else {return};
-    let Ok(mut cycle) = q_cycles.get_mut(ent) else {return};
-    let hue = (hover_entity.position.to_angle() + PI) / TAU;
-    cycle.color = Color::hsv(360.0 * hue, 1.0, 1.0).into();
-}
-
 #[derive(Component)]
 struct Highlight;
 
@@ -273,22 +262,7 @@ fn play_anything(
         _ = backend.producer.send(sample * 0.2);
     }
     pos.0 += PLAY_CHUNK as u32;
-    pos.0 %= 48000 * 256;
-}
-
-
-struct Node {
-    x: f32,
-    y: f32,
-    color: LinearRgba,
-    f: fn(f32) -> f32,
-    freq: u32,
-}
-
-impl Node  {
-    fn new(x: f32, y: f32, color: LinearRgba, f: fn(f32) -> f32, freq: u32) -> Self {
-        Self { x, y, color, f, freq }
-    }
+    pos.0 %= 48000 * 256 * 3;
 }
 
 fn spawn_cyclewaves(
@@ -296,11 +270,11 @@ fn spawn_cyclewaves(
 ) {
     // Example circle data
     let nodes = vec![
-        Node::new(-2.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE, 63),
-        Node::new(-1.0, 0.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH, 63),
-        Node::new( 0.0, 0.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE, 63),
-        Node::new( 1.0, 0.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE, 63),
-        Node::new( 2.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE, 63),
+        (-3.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE),
+        (-1.5, 0.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH),
+        ( 0.0, 0.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE),
+        ( 1.5, 0.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE),
+        ( 3.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE),
     ];
 
     let mut segment = commands.spawn(Segment {
@@ -310,7 +284,7 @@ fn spawn_cyclewaves(
         target_size: 1.0,
     }).id();
 
-    for node in nodes {
+    for (x,y,color,f) in nodes {
         let new_segment = commands.spawn(Segment {
             source: Vec2::new(0.0,-2.0),
             target: Vec2::new(0.0,2.0),
@@ -320,12 +294,12 @@ fn spawn_cyclewaves(
 
         commands.spawn(CycleWaveBundle{
             cycle: Cycle{
-                color: node.color,
-                frequency: node.freq,
+                color: color,
+                frequency: Cycle::NOTE_A4,
                 ..Default::default()
             },
-            wave: Wave::new(node.f),
-            transform: Transform::from_translation(Vec3::new(node.x, node.y, 0.0)),
+            wave: Wave::new(f),
+            transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
             ..default()
         }).with_children(|parent|{
             parent.spawn(Bow(segment));
@@ -333,6 +307,53 @@ fn spawn_cyclewaves(
         });
         segment = new_segment;
     }
-
 }
 
+fn colorize(
+    hover_entity: Res<Hover>,
+    mut q_cycles: Query<&mut Cycle>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if !keyboard.pressed(KeyCode::KeyC) {return}
+    let Some(ent) = hover_entity.entity else {return};
+    let Ok(mut cycle) = q_cycles.get_mut(ent) else {return};
+    let hue = (hover_entity.position.to_angle() + PI) / TAU;
+    cycle.color = Color::hsv(360.0 * hue, 1.0, 1.0).into();
+}
+
+fn add_circle(
+    mut commands: Commands,
+    mouse: Res<MousePos>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    let function = match () {
+        _ if keyboard.just_pressed(KeyCode::Digit1) => Wave::SINE,
+        _ if keyboard.just_pressed(KeyCode::Digit2) => Wave::TRIANGLE,
+        _ if keyboard.just_pressed(KeyCode::Digit3) => Wave::SAWTOOTH,
+        _ if keyboard.just_pressed(KeyCode::Digit4) => Wave::SQUARE,
+        _ if keyboard.just_pressed(KeyCode::Digit5) => Wave::NOISE,
+        _ if keyboard.just_pressed(KeyCode::Digit6) => |v: f32| if v < 0.25 {1.0} else {0.0},
+        _ if keyboard.just_pressed(KeyCode::Digit7) => |v: f32| if v < 0.125 {1.0} else {0.0},
+        _ if keyboard.just_pressed(KeyCode::Digit8) => |v: f32| f32::exp(-16.0 * v),
+        _ if keyboard.just_pressed(KeyCode::Digit9) => |v: f32| f32::clamp(1.0 - f32::abs(1.0 - 4.0*v), 0.0, 1.0),
+        _ if keyboard.just_pressed(KeyCode::Digit0) => |v: f32| f32::clamp(2.0 - f32::abs(2.0 - 8.0*v), 0.0, 1.0),
+        _ => return
+    };
+
+    let frequency = if is_shift(keyboard) {
+        Cycle::DEFAULT_FREQUENCY
+    } else {
+        Cycle::NOTE_A4
+    };
+
+    commands.spawn(CycleWaveBundle{
+        cycle: Cycle {
+            color: Color::hsv(thread_rng().gen_range(0.0..360.0), 1.0, 1.0).into(),
+            frequency: frequency,
+            ..Default::default()
+        },
+        wave: Wave::new(function),
+        transform: Transform::from_translation(mouse.position.extend(0.0)),
+        ..default()
+    });
+}
