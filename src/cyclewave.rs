@@ -164,7 +164,7 @@ fn rotate_cyclewaves(
 #[derive(Component,Clone)]
 pub struct Wave {
     pub pattern: [f32;Self::LENGTH],
-    material: Handle<WaveMaterial>,
+    pub material: Handle<WaveMaterial>,
     pub average: f32,
 }
 

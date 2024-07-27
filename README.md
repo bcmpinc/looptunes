@@ -17,6 +17,7 @@ Available on:
 - Change the color of circles with 'c'.
 - Use the 0-9 keys to add new circles.
 - Hold shift to insert new circles with 1Hz instead of 440Hz.
+- Clone circles by holding ctrl while dragging them.
 
 ## License
 

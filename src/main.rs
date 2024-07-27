@@ -45,7 +45,7 @@ fn main() {
         ))
         .add_systems(Startup, (setup, set_window_title))
         .add_systems(Startup, spawn_cyclewaves)
-        .add_systems(Update, (hover_cycle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
+        .add_systems(Update, (hover_cycle, clone_circle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
         .add_systems(Update, (colorize, add_circle))
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
@@ -110,6 +110,7 @@ fn hover_cycle(
     buttons: Res<ButtonInput<MouseButton>>,
     mut hover_entity: ResMut<Hover>,
     mut windows: Query<&mut Window>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     // Don't update higlight while button is pressed.
     hover_entity.pressed = buttons.pressed(MouseButton::Left);
@@ -141,7 +142,9 @@ fn hover_cycle(
             nearest = score;
             hover_entity.entity = Some(entity);
             hover_entity.position = pos;
-            if dist < 0.45 || scale / mouse.zoom < 200.0 {
+            if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+                window.cursor.icon = CursorIcon::Copy;
+            } else if dist < 0.45 || scale / mouse.zoom < 200.0 {
                 window.cursor.icon = CursorIcon::Grab;
             } else {
                 window.cursor.icon = CursorIcon::Crosshair;
@@ -174,6 +177,35 @@ fn drag_cycle(
         }
     }
 }
+
+fn clone_circle(
+    mut commands: Commands,
+    q_cycles: Query<(&Cycle, &Wave)>,
+    mut hover_entity: ResMut<Hover>,
+    mouse: Res<MousePos>,
+    mut windows: Query<&mut Window>,
+) {
+    if !hover_entity.pressed {return}
+    let Some(ent) = hover_entity.entity else {return};
+    let Ok((cycle, wave)) = q_cycles.get(ent) else {return};
+
+    let mut window = windows.single_mut();
+    if window.cursor.icon != CursorIcon::Copy {return}
+    window.cursor.icon = CursorIcon::Grabbing; 
+
+    let entity = commands.spawn(CycleWaveBundle{
+        cycle: cycle.clone(),
+        wave: Wave{
+            pattern: wave.pattern.clone(),
+            ..default()
+        },
+        transform: Transform::from_translation(mouse.position.extend(0.0)),
+        ..default()
+    });
+
+    hover_entity.entity = Some(entity.id());
+}
+
 
 fn get_index(pos: Vec2) -> usize {
     (1024.0 * (PI + f32::atan2(pos.x, -pos.y)) / TAU) as usize
