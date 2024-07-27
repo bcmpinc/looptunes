@@ -61,9 +61,9 @@ fn main() {
             (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift))
         ).chain())
         .add_systems(Update, (colorize, add_circle))
-        .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
         .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
+        .add_systems(PostUpdate, track_hover)
         .insert_resource(PlayPosition(0))
         .run();
 }
@@ -78,7 +78,7 @@ fn setup(
         ..default()
     });
     
-    commands.spawn((
+    let highlight = commands.spawn((
         ColorMesh2dBundle{
             mesh: Mesh2dHandle(meshes.add(Annulus::new(0.54, 0.55).mesh().resolution(16))),
             material: materials.add(ColorMaterial::from_color(Color::WHITE)),
@@ -86,7 +86,15 @@ fn setup(
             ..default()
         },
         Highlight,
-    ));
+    )).id();
+
+    commands.insert_resource(Hover{
+        entity: None,
+        position: default(), 
+        old_position: default(), 
+        pressed: default(),
+        highlight,
+    });
 }
 
 #[derive(Resource)]
@@ -95,21 +103,36 @@ pub struct Hover {
     pub position: Vec2,
     pub old_position: Vec2,
     pub pressed: bool,
+    pub highlight: Entity,
 }
 
-impl Default for Hover {
-    fn default() -> Self {
-        Self { 
-            entity: default(), 
-            position: default(), 
-            old_position: default(), 
-            pressed: default(), 
-        }
+/** Moves the Higlight entity to whatever the Hover resource points to. */
+fn track_hover(
+    mut commands: Commands, 
+    mut entity: Query<(Entity, &mut Visibility, Option<&Parent>), With<Highlight>>,
+    hover: Res<Hover>,
+){
+    use Visibility::*;
+    let (entity, mut visible, parent) = entity.single_mut();
+    match hover.entity {
+        Some(hover_entity) => {
+            if parent == None || parent.unwrap().get() != hover_entity {
+                commands.entity(entity).set_parent(hover_entity);
+            }
+            if *visible != Visible {
+                *visible = Visible;
+            }
+        },
+        None if *visible != Hidden => {
+            commands.entity(entity).remove_parent();
+            *visible = Hidden;
+        },
+        _ => {}
     }
 }
 
 fn nearest_circle(
-    cycles: &Query<(Entity, &GlobalTransform), (With<Cycle>, Without<Highlight>)>,
+    cycles: &Query<(Entity, &GlobalTransform), With<Cycle>>,
     mouse: Res<MousePos>,
 ) -> Option<(Entity, Vec2, bool)> {
     let mut res: Option<(Entity, Vec2, bool)> = None;
@@ -131,24 +154,19 @@ fn nearest_circle(
 }
 
 fn hover_cycle(
-    mut commands: Commands, 
-    cycles: Query<(Entity, &GlobalTransform), (With<Cycle>, Without<Highlight>)>,
-    mut hover: Query<(Entity, &mut Visibility), (With<Highlight>, Without<Cycle>)>,
+    cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
     mouse: Res<MousePos>,
     buttons: Res<ButtonInput<MouseButton>>,
-    mut hover_entity: ResMut<Hover>,
+    mut hover: ResMut<Hover>,
     mut windows: Query<&mut Window>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     // Don't update higlight while button is pressed.
-    hover_entity.pressed = buttons.pressed(MouseButton::Left);
-    if hover_entity.pressed {return}
-    
-    let (h_entity, mut h_vis) = hover.single_mut();
-    
-    // Reset hover entity
-    *h_vis = Visibility::Hidden;
-    hover_entity.entity = None;
+    hover.pressed = buttons.pressed(MouseButton::Left);
+    if hover.pressed {return}
+
+    // Reset hover entity.
+    hover.entity = None;
     
     // Reset mouse cursor
     let mut window = windows.single_mut();
@@ -157,11 +175,8 @@ fn hover_cycle(
     
     // Find "nearest" circle and move hover entity towards it.
     let Some((entity, position, draw)) = nearest_circle(&cycles, mouse) else {return};
-
-    *h_vis = Visibility::Visible;
-    commands.entity(h_entity).set_parent(entity);
-    hover_entity.entity = Some(entity);
-    hover_entity.position = position;
+    hover.entity = Some(entity);
+    hover.position = position;
     if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
         window.cursor.icon = CursorIcon::Copy;
     } else if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
@@ -177,10 +192,10 @@ fn drag_cycle(
     mut q_cycles: Query<&mut Transform, (With<Cycle>,Without<Camera2d>)>,
     q_camera: Query<&Transform, (With<Camera2d>, Without<Cycle>)>,
     mut motion: EventReader<CursorMoved>,
-    hover_entity: Res<Hover>,
+    hover: Res<Hover>,
     mut windows: Query<&mut Window>,
 ) {
-    if !hover_entity.pressed {return}
+    if !hover.pressed {return}
 
     let mut window = windows.single_mut();
     if window.cursor.icon == CursorIcon::Grab {
@@ -188,7 +203,7 @@ fn drag_cycle(
     }
     if window.cursor.icon != CursorIcon::Grabbing {return}
 
-    let Some(cycle_id) = hover_entity.entity else {return};
+    let Some(cycle_id) = hover.entity else {return};
     let Ok(mut cycle) = q_cycles.get_mut(cycle_id) else {return};
     let scale = q_camera.single().scale.x;
     for event in motion.read() {
@@ -201,15 +216,17 @@ fn drag_cycle(
 fn connect_cycle(
     mut commands: Commands,
     windows: Query<&mut Window>,
-    hover_entity: Res<Hover>,
+    cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
+    mut hover: ResMut<Hover>,
     mut connector: ResMut<Connector>,
+    mouse: Res<MousePos>,
 ) {
-    if !hover_entity.pressed {return}
+    if !hover.pressed {return}
     let window = windows.single();
     if window.cursor.icon != CursorIcon::Pointer {return}
 
     if connector.arrow == None {
-        let Some(cycle) = hover_entity.entity else {return};
+        let Some(cycle) = hover.entity else {return};
         let seg = commands.spawn(
             Segment::default(),
         ).id();
@@ -223,18 +240,28 @@ fn connect_cycle(
 
     let arrow = connector.arrow.unwrap();
 
-    
+    let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) else {
+        if hover.entity != None {
+            hover.entity = None;
+            commands.entity(arrow).remove_parent_in_place();
+        }
+        return
+    };
+
+    hover.entity = Some(entity);
+    hover.position = position;
+    commands.entity(arrow).set_parent_in_place(entity);
 }
 
 fn clone_circle(
     mut commands: Commands,
     q_cycles: Query<(&Cycle, &Wave)>,
-    mut hover_entity: ResMut<Hover>,
+    mut hover: ResMut<Hover>,
     mouse: Res<MousePos>,
     mut windows: Query<&mut Window>,
 ) {
-    if !hover_entity.pressed {return}
-    let Some(ent) = hover_entity.entity else {return};
+    if !hover.pressed {return}
+    let Some(ent) = hover.entity else {return};
     let Ok((cycle, wave)) = q_cycles.get(ent) else {return};
 
     let mut window = windows.single_mut();
@@ -251,22 +278,19 @@ fn clone_circle(
         ..default()
     });
 
-    hover_entity.entity = Some(entity.id());
+    hover.entity = Some(entity.id());
 }
 
 fn delete_circle(
     mut commands: Commands,
-    mut hover_res: ResMut<Hover>,
+    mut hover: ResMut<Hover>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut hover: Query<(Entity, &mut Visibility), With<Highlight>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Delete) {return}
-    let Some(entity) = hover_res.entity else {return};
-    let (hover_entity, mut hover_visible) = hover.single_mut();
-    commands.entity(hover_entity).remove_parent();
-    *hover_visible = Visibility::Hidden;
+    let Some(entity) = hover.entity else {return};
+    hover.entity = None;
+    commands.entity(hover.highlight).remove_parent();
     commands.entity(entity).despawn_recursive();
-    hover_res.entity = None;
 }
 
 fn get_index(pos: Vec2) -> usize {
@@ -275,21 +299,21 @@ fn get_index(pos: Vec2) -> usize {
 
 fn draw_cycle(
     mut q_cycles: Query<(&Transform, &mut Wave), (With<Cycle>,Without<Camera2d>)>,
-    mut hover_entity: ResMut<Hover>,
+    mut hover: ResMut<Hover>,
     windows: Query<&mut Window>,
     mouse: Res<MousePos>,
 ) {
-    if !hover_entity.pressed {return}
+    if !hover.pressed {return}
     let window = windows.single();
     if window.cursor.icon != CursorIcon::Crosshair {return}
 
-    let Some(cycle_id) = hover_entity.entity else {return};
+    let Some(cycle_id) = hover.entity else {return};
     let Ok((cycle, mut wave)) = q_cycles.get_mut(cycle_id) else {return};
     
     let translation = cycle.translation;
     let scale = cycle.scale.x / 2.0;
     let pos = (mouse.position - translation.xy()) / scale;
-    let a = hover_entity.position;
+    let a = hover.position;
     let b = pos;
 
     // Line drawing algorithm
@@ -318,16 +342,16 @@ fn draw_cycle(
         }
     }
 
-    hover_entity.old_position = a;
-    hover_entity.position = b;
+    hover.old_position = a;
+    hover.position = b;
 }
 
 fn scroll_cycle(
     mut q_cycles: Query<&mut Cycle>,
-    hover_entity: Res<Hover>,
+    hover: Res<Hover>,
     mut scroll: EventReader<MouseWheel>,
 ) {
-    let Some(entity) = hover_entity.entity else {return};
+    let Some(entity) = hover.entity else {return};
     let Ok(mut cycle) = q_cycles.get_mut(entity) else {return};
     for event in scroll.read() {
         cycle.change_frequency(-event.y.signum() as i32);
@@ -342,11 +366,11 @@ struct PlayPosition(u32);
 
 fn play_anything(
     q_cycles: Query<(&Cycle,&Wave)>,
-    hover_entity: Res<Hover>,
+    hover: Res<Hover>,
     backend: Res<LoopTunesBackend>,
     mut pos: ResMut<PlayPosition>,
 ) {
-    let Some(entity) = hover_entity.entity else {return};
+    let Some(entity) = hover.entity else {return};
     let Ok((cycle, wave)) = q_cycles.get(entity) else {return};
     for i in 0..PLAY_CHUNK as u32 {
         let t = (pos.0 + i) as f64 / 48000.0;
@@ -402,14 +426,14 @@ fn spawn_cyclewaves(
 }
 
 fn colorize(
-    hover_entity: Res<Hover>,
+    hover: Res<Hover>,
     mut q_cycles: Query<&mut Cycle>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.pressed(KeyCode::KeyC) {return}
-    let Some(ent) = hover_entity.entity else {return};
+    let Some(ent) = hover.entity else {return};
     let Ok(mut cycle) = q_cycles.get_mut(ent) else {return};
-    let hue = (hover_entity.position.to_angle() + PI) / TAU;
+    let hue = (hover.position.to_angle() + PI) / TAU;
     cycle.color = Color::hsv(360.0 * hue, 1.0, 1.0).into();
 }
 
