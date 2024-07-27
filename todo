@@ -1,3 +1,4 @@
+MVP:
 x Drag circles
 x Change circle frequency (and scale)
 x Play circle
@@ -5,3 +6,8 @@ x Add circles
 - Connect circles
 - Play circle tree
 x Modify wave
+
+Stretches:
+- Persistance?
+- Copy circles?
+- Delete circles?
