@@ -326,18 +326,20 @@ fn disconnect_cycle(
     mut commands: Commands,
     hover: Res<Hover>,
     connector: Res<Connector>,
-    old_bows: Query<(Entity, &Parent), With<Bow>>,
+    segments: Query<(Entity, &Segment)>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyX) {return}
     if connector.0 != None {return}
     let Some(entity) = hover.entity else {return};
-    
+
+    // Remove hovered cycle from the cycle hierarchy
     commands.entity(entity).remove_parent_in_place();
-    for (bow_id, parent) in old_bows.iter() {
-        if parent.get() == entity {
-            commands.try_despawn(bow_id);
-            // This despawns the segment and arrow too.
+
+    // Remove the connecting segment
+    for (seg_id, segment) in segments.iter() {
+        if segment.child_cycle == entity {
+            commands.try_despawn(seg_id);
         }
     }
 }

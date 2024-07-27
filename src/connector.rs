@@ -62,8 +62,8 @@ impl Segment {
     }
 }
 
-#[derive(Component)] pub struct Bow(pub Entity);
-#[derive(Component)] pub struct Arrow{
+#[derive(Component)] struct Bow(pub Entity);
+#[derive(Component)] struct Arrow{
     pub segment: Entity,
     pub child_cycle: Entity,
 }
