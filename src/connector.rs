@@ -82,14 +82,15 @@ fn bow_with_segment(
 }
 
 fn bow_tracks_segment(
-    mut q: Query<(&Bow, &mut Transform),Without<Segment>>,
-    mut segments: Query<&Transform,With<Segment>>,
+    mut q: Query<(&Bow, &mut Transform, &Parent),Without<Segment>>,
+    q_parent: Query<&GlobalTransform>,
+    segments: Query<&Segment>,
 ) {
-    for (bow, mut transform) in q.iter_mut() {
-        if let Ok(seg) = segments.get_mut(bow.0) {
-            transform.rotation = seg.rotation * Quat::from_rotation_z(PI/2.0);
-            transform.translation = transform.rotation * BOW_POSITION;
-        }
+    for (bow, mut transform, parent) in q.iter_mut() {
+        let Ok(seg) = segments.get(bow.0) else {continue};
+        let Ok(parent_pos) = q_parent.get(parent.get()) else {continue};
+        transform.rotation = Quat::from_rotation_z(Vec2::to_angle(seg.target - parent_pos.translation().truncate())) * Quat::from_rotation_z(PI/2.0);
+        transform.translation = transform.rotation * BOW_POSITION;
     }
 }
 
