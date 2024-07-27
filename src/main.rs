@@ -227,7 +227,7 @@ fn has_parent(parents: &Query<&Parent>, mut child: Entity, parent: Entity) -> bo
 
 fn connect_cycle(
     mut commands: Commands,
-    windows: Query<&mut Window>,
+    mut windows: Query<&mut Window>,
     cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
     mut cycles2: Query<&mut Cycle>,
     mut hover: ResMut<Hover>,
@@ -237,8 +237,9 @@ fn connect_cycle(
     parents: Query<&Parent>,
 ) {
     if !hover.pressed {return}
-    let window = windows.single();
-    if window.cursor.icon != CursorIcon::Pointer {return}
+    let mut window = windows.single_mut();
+    if window.cursor.icon != CursorIcon::Pointer && window.cursor.icon != CursorIcon::NotAllowed {return}
+    window.cursor.icon = CursorIcon::Pointer;
 
     // Create a new connector.
     if connector.arrow == None {
@@ -265,7 +266,9 @@ fn connect_cycle(
         let cc_id = connector.child_cycle.unwrap();
 
         // Don't connect to *cc_id* or any of its children.
-        if !has_parent(&parents, entity, cc_id) {
+        if has_parent(&parents, entity, cc_id) {
+            window.cursor.icon = CursorIcon::NotAllowed;
+        } else {
             hover.entity = Some(entity);
             hover.position = position;
             commands.entity(arrow).set_parent(entity);
