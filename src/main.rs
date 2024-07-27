@@ -10,16 +10,17 @@ use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
 use bevy::ecs::system::Commands;
 use bevy::prelude::*;
-use bevy::window::{CursorIcon, PrimaryWindow, Window};
+use bevy::window::{CursorIcon, PresentMode, PrimaryWindow, Window, WindowTheme};
 use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
+
+use rand::{thread_rng, Rng};
 
 mod connector; use connector::*;
 mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
-mod wireframe; use rand::{thread_rng, Rng};
-use wireframe::*;
+mod wireframe; use wireframe::*;
 
 fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
     keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
@@ -33,9 +34,19 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_plugins((
             EmbeddedAssetPlugin{mode: PluginMode::ReplaceDefault},
-            DefaultPlugins.set(
-                AssetPlugin{meta_check: bevy::asset::AssetMetaCheck::Never, ..default()},
-            ),
+            DefaultPlugins.set(AssetPlugin{
+                meta_check: bevy::asset::AssetMetaCheck::Never, ..default()
+            }).set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Loop Tunes!".into(),
+                    present_mode: PresentMode::AutoNoVsync,
+                    fit_canvas_to_parent: true,
+                    prevent_default_event_handling: false,
+                    window_theme: Some(WindowTheme::Dark),
+                    ..default()
+                }),
+                ..default()
+            }),
             Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
@@ -43,7 +54,7 @@ fn main() {
             LoopTunes,
             ConnectorPlugin,
         ))
-        .add_systems(Startup, (setup, set_window_title))
+        .add_systems(Startup, (setup))
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (hover_cycle, clone_circle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
         .add_systems(Update, (colorize, add_circle))
@@ -73,14 +84,6 @@ fn setup(
         },
         Highlight,
     ));
-}
-
-fn set_window_title(
-    mut window_query: Query<&mut Window, With<PrimaryWindow>>,
-) {
-    if let Ok(mut window) = window_query.get_single_mut() {
-        window.title = "Loop Tunes".to_string();
-    } 
 }
 
 #[derive(Resource)]
