@@ -1,9 +1,9 @@
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 
 use bevy::prelude::*;
 use bevy::sprite::Mesh2dHandle;
 
-use crate::MousePos;
+use crate::{Cycle, MousePos};
 
 pub struct ConnectorPlugin;
 
@@ -11,7 +11,11 @@ impl Plugin for ConnectorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
         app.add_systems(Update, (bow_tracks_segment, update_connector));
-        app.add_systems(PostUpdate, (position_segment_mesh,bow_with_segment,arrow_with_segment));
+        app.add_systems(PostUpdate, (
+            arrow_copy_phase,
+            (bow_with_segment,arrow_with_segment),
+            position_segment_mesh
+        ).chain());
         app.add_systems(Last, clear_orphaned_segments);
         app.insert_resource(Connector::default());
     }
@@ -39,16 +43,21 @@ impl Default for Segment {
 }
 
 #[derive(Component)] pub struct Bow(pub Entity);
-#[derive(Component)] pub struct Arrow(pub Entity);
+#[derive(Component)] pub struct Arrow{
+    pub segment: Entity,
+    pub child_cycle: Entity,
+}
 
 #[derive(Resource)] pub struct Connector {
-    pub bow:   Option<Entity>,
+    pub bow: Option<Entity>,
     pub arrow: Option<Entity>,
+    pub child_cycle: Option<Entity>,
 }
 impl Default for Connector {
     fn default() -> Self { Self { 
         bow: None, 
-        arrow: None 
+        arrow: None,
+        child_cycle: None,
     }}
 }
 
@@ -151,12 +160,25 @@ fn create_arrow_sprite(
     }
 }
 
+fn arrow_copy_phase(
+    mut q: Query<(&Arrow,&mut Transform,&Parent), With<Parent>>,
+    cycles: Query<&Cycle>,
+) {
+    for (arrow, mut transform, parent) in q.iter_mut() {
+        if let Ok(cycle) = cycles.get(arrow.child_cycle) {
+            transform.rotation = Quat::from_rotation_z(cycle.phase_in_parent() * TAU);
+            transform.translation = transform.rotation * ARROW_POSITION;
+            println!("Parent is {:?}", parent);
+        }
+    }
+}
+
 fn arrow_with_segment(
-    mut q: Query<(&Arrow,&GlobalTransform)>,
+    q: Query<(&Arrow,&GlobalTransform)>,
     mut segments: Query<&mut Segment>,
 ) {
-    for (arrow, transform) in q.iter_mut() {
-        if let Ok(mut seg) = segments.get_mut(arrow.0) {
+    for (arrow, transform) in q.iter() {
+        if let Ok(mut seg) = segments.get_mut(arrow.segment) {
             seg.target = transform.transform_point(Vec3::new(0.0,100.0, 0.0)).truncate();
             seg.target_size = transform.affine().x_axis.length();
         }

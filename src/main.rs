@@ -226,31 +226,43 @@ fn connect_cycle(
     if window.cursor.icon != CursorIcon::Pointer {return}
 
     if connector.arrow == None {
-        let Some(cycle) = hover.entity else {return};
-        let seg = commands.spawn(
+        let Some(child_cycle) = hover.entity else {return};
+        connector.child_cycle = Some(child_cycle);
+        let segment = commands.spawn(
             Segment::default(),
         ).id();
         connector.bow = Some(commands.spawn(
-            Bow(seg)
-        ).set_parent(cycle).id());
+            Bow(segment)
+        ).set_parent(child_cycle).id());
         connector.arrow = Some(commands.spawn(
-            Arrow(seg)
+            Arrow{
+                segment,
+                child_cycle,
+            }
         ).id());
     }
 
     let arrow = connector.arrow.unwrap();
 
-    let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) else {
-        if hover.entity != None {
-            hover.entity = None;
-            commands.entity(arrow).remove_parent_in_place();
+    if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
+        if connector.child_cycle != Some(entity) {
+            hover.entity = Some(entity);
+            hover.position = position;
+            commands.entity(arrow).set_parent_in_place(entity);
+            return
         }
-        return
-    };
+    }
+    if hover.entity != None {
+        hover.entity = None;
+        commands.entity(arrow).remove_parent_in_place();
+    }
+}
 
-    hover.entity = Some(entity);
-    hover.position = position;
-    commands.entity(arrow).set_parent_in_place(entity);
+fn connect_drop(
+    mut hover: ResMut<Hover>,
+
+) {
+
 }
 
 fn clone_circle(
@@ -364,6 +376,7 @@ struct Highlight;
 #[derive(Resource)]
 struct PlayPosition(u32);
 
+#[allow(unused)]
 fn play_anything(
     q_cycles: Query<(&Cycle,&Wave)>,
     hover: Res<Hover>,
