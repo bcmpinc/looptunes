@@ -45,6 +45,7 @@ fn main() {
         .add_systems(Startup, (setup, set_window_title))
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (hover_cycle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
+        .add_systems(Update, colorize)
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
         .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
@@ -236,6 +237,18 @@ fn scroll_cycle(
     for event in scroll.read() {
         cycle.change_frequency(-event.y.signum() as i32);
     }
+}
+
+fn colorize(
+    hover_entity: Res<Hover>,
+    mut q_cycles: Query<&mut Cycle>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if !keyboard.pressed(KeyCode::KeyC) {return}
+    let Some(ent) = hover_entity.entity else {return};
+    let Ok(mut cycle) = q_cycles.get_mut(ent) else {return};
+    let hue = (hover_entity.position.to_angle() + PI) / TAU;
+    cycle.color = Color::hsv(360.0 * hue, 1.0, 1.0).into();
 }
 
 #[derive(Component)]
