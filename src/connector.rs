@@ -32,8 +32,9 @@ pub struct Segment {
     pub source_size: f32,
     pub target_size: f32,
     pub child_cycle: Entity,
-    pub bow: Entity,
-    pub arrow: Entity,
+    pub parent_cycle: Option<Entity>,
+    bow: Entity,
+    arrow: Entity,
 }
 
 impl Segment {
@@ -53,6 +54,7 @@ impl Segment {
             target: default(), 
             source_size: 1.0, 
             target_size: 1.0, 
+            parent_cycle: None,
             child_cycle,
             bow,
             arrow,
@@ -67,6 +69,8 @@ impl Segment {
 }
 
 #[derive(Resource)] pub struct Connector(pub Option<Entity>);
+
+// TODO: Attach arrow to parent cycle.
 
 fn create_segment_mesh(
     mut commands: Commands,
@@ -249,9 +253,10 @@ fn clear_unconnected_arrows(
     }
 }
 
-pub fn connector_segment<'a> (
-    connector: &Connector,
-    segments: &'a Query<&Segment>,
-) -> Option<&'a Segment> {
+pub fn connector_segment<'a> (connector: &Connector,segments: &'a Query<&Segment>) -> Option<&'a Segment> {
     return segments.get(connector.0?).ok()
+}
+
+pub fn connector_segment_mut<'a> (connector: &Connector,segments: &'a mut Query<&mut Segment>) -> Option<Mut<'a, Segment>> {
+    return segments.get_mut(connector.0?).ok()
 }

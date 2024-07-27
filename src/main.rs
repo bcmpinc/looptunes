@@ -59,6 +59,7 @@ fn main() {
         .add_systems(Startup, spawn_cyclewaves)
         .add_systems(Update, (
             hover_cycle, 
+            connect_create,
             (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift), disconnect_cycle),
             connect_drop
         ).chain())
@@ -227,32 +228,47 @@ fn has_parent(parents: &Query<&Parent>, mut child: Entity, parent: Entity) -> bo
     }
 }
 
-fn connect_cycle(
+fn connect_create(
     mut commands: Commands,
+    windows: Query<&Window>,
+    hover: Res<Hover>,
+    mut connector: ResMut<Connector>,
+    segments: Query<(Entity,&Segment)>,
+) {
+    if !hover.pressed {return}
+    if windows.single().cursor.icon != CursorIcon::Pointer {return}
+
+    if connector.0.is_some() {return}
+    let Some(child_cycle) = hover.entity else {return};
+    for (ent, seg) in segments.iter() {
+        if seg.child_cycle == child_cycle {
+            // Repurpose existing connector.
+            connector.0 = Some(ent);
+            return
+        }
+    }
+    
+    // Create a new connector.
+    connector.0 = Some(Segment::spawn(&mut commands, child_cycle));
+}
+
+fn connect_cycle(
     mut windows: Query<&mut Window>,
     cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
     mut cycles2: Query<&mut Cycle>,
     mut hover: ResMut<Hover>,
-    mut connector: ResMut<Connector>,
+    connector: Res<Connector>,
     mouse: Res<MousePos>,
     keyboard: Res<ButtonInput<KeyCode>>,
     parents: Query<&Parent>,
-    segments: Query<&Segment>,
+    mut segments: Query<&mut Segment>,
 ) {
     if !hover.pressed {return}
+    let Some(mut segment) = connector_segment_mut(&connector, &mut segments) else {return};
     let mut window = windows.single_mut();
-    if window.cursor.icon != CursorIcon::Pointer && window.cursor.icon != CursorIcon::NotAllowed {return}
     window.cursor.icon = CursorIcon::Pointer;
 
-    // Create a new connector.
-    if connector.0 == None {
-        let Some(child_cycle) = hover.entity else {return};
-        connector.0 = Some(Segment::spawn(&mut commands, child_cycle));
-    }
-    let Some(segment) = connector_segment(&connector, &segments) else {return};
-
     // Attach arrow to hovered cycle.
-    let arrow = segment.arrow;
     if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
         let cc_id = segment.child_cycle;
 
@@ -262,9 +278,7 @@ fn connect_cycle(
         } else {
             hover.entity = Some(entity);
             hover.position = position;
-            assert!(arrow != entity);
-            commands.entity(arrow).set_parent(entity);
-            
+            segment.parent_cycle = Some(entity);
             let mut cc = cycles2.get_mut(cc_id).unwrap();
             let mut phase = 1.25 - position.to_angle() / TAU;
             if is_shift(keyboard) {
@@ -276,7 +290,7 @@ fn connect_cycle(
     }
     if hover.entity != None {
         hover.entity = None;
-        commands.entity(arrow).remove_parent_in_place();
+        segment.parent_cycle = None;
     }
 }
 
@@ -304,8 +318,6 @@ fn connect_drop(
 
     //println!("removing");
     // No new parent, delete the connector
-    commands.try_despawn(segment.arrow);
-    commands.try_despawn(segment.bow);
     commands.try_despawn(connector.0);
     connector.0 = None;
 }
