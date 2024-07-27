@@ -13,9 +13,7 @@ impl Plugin for ConnectorPlugin {
         app.add_systems(Update, (bow_tracks_segment, update_connector));
         app.add_systems(PostUpdate, (position_segment_mesh,bow_with_segment,arrow_with_segment));
         app.add_systems(Last, clear_orphaned_segments);
-        app.insert_resource(Connector{
-            segment: None,
-        });
+        app.insert_resource(Connector::default());
     }
 }
 
@@ -44,7 +42,14 @@ impl Default for Segment {
 #[derive(Component)] pub struct Arrow(pub Entity);
 
 #[derive(Resource)] pub struct Connector {
-    pub segment: Option<Entity>,
+    pub bow:   Option<Entity>,
+    pub arrow: Option<Entity>,
+}
+impl Default for Connector {
+    fn default() -> Self { Self { 
+        bow: None, 
+        arrow: None 
+    }}
 }
 
 fn create_segment_mesh(
@@ -159,11 +164,16 @@ fn arrow_with_segment(
 }
 
 fn update_connector(
-    mut q: Query<&mut Segment>,
+    mut q: Query<&mut Transform, (With<Arrow>, Without<Parent>)>,
     connector: Res<Connector>,
     mouse: Res<MousePos>,
 ) {
-    let Some(ent) = connector.segment else {return};
-    let Ok(mut seg) = q.get_mut(ent) else {return};
-    seg.target = mouse.position;
+    let Some(ent) = connector.arrow else {return};
+    let Ok(mut arrow) = q.get_mut(ent) else {return};
+    
+    // Make arrow follow the cursor
+    let delta = arrow.translation.truncate() - mouse.position;
+    let delta_clamped = delta.clamp_length(0.3, 0.3);
+    arrow.translation = (mouse.position + delta_clamped).extend(0.0);
+    arrow.rotation = Quat::from_rotation_z(delta.to_angle() - PI/2.0);
 }

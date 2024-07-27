@@ -8,7 +8,8 @@ x Add circles
 x Modify wave
 
 Stretches:
-- Persistance?
 x Copy circles?
 x Delete circles?
+- Don't delete entire circle trees
+- Persistance?
 - Undo?

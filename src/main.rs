@@ -108,6 +108,28 @@ impl Default for Hover {
     }
 }
 
+fn nearest_circle(
+    cycles: &Query<(Entity, &GlobalTransform), (With<Cycle>, Without<Highlight>)>,
+    mouse: Res<MousePos>,
+) -> Option<(Entity, Vec2, bool)> {
+    let mut res: Option<(Entity, Vec2, bool)> = None;
+    let mut nearest = f32::INFINITY;
+
+    // Find "nearest" circle.
+    for (entity, cycle_pos) in cycles.iter() {
+        let translation = cycle_pos.translation();
+        let scale = cycle_pos.affine().x_axis[0] / 2.0;
+        let pos = (mouse.position - translation.xy()) / scale;
+        let dist = pos.length();
+        let score = (dist + 1.0) * scale;
+        if dist < 1.05 && nearest > score {
+            nearest = score;
+            res = Some((entity, pos, dist > 0.45 && scale / mouse.zoom > 200.0));
+        }
+    }
+    res
+}
+
 fn hover_cycle(
     mut commands: Commands, 
     cycles: Query<(Entity, &GlobalTransform), (With<Cycle>, Without<Highlight>)>,
@@ -122,42 +144,32 @@ fn hover_cycle(
     hover_entity.pressed = buttons.pressed(MouseButton::Left);
     if hover_entity.pressed {return}
     
-    
     let (h_entity, mut h_vis) = hover.single_mut();
-    let mut nearest = f32::INFINITY;
     
     // Reset hover entity
     *h_vis = Visibility::Hidden;
     hover_entity.entity = None;
-
+    
     // Reset mouse cursor
     let mut window = windows.single_mut();
     window.cursor.icon = CursorIcon::Default;
     if !mouse.on_screen {return}
-
+    
     // Find "nearest" circle and move hover entity towards it.
-    for (entity, cycle_pos) in cycles.iter() {
-        let translation = cycle_pos.translation();
-        let scale = cycle_pos.affine().x_axis[0] / 2.0;
-        let pos = (mouse.position - translation.xy()) / scale;
-        let dist = pos.length();
-        let score = (dist + 1.0) * scale;
-        if dist < 1.05 && nearest > score {
-            *h_vis = Visibility::Visible;
-            commands.entity(h_entity).set_parent(entity);
-            nearest = score;
-            hover_entity.entity = Some(entity);
-            hover_entity.position = pos;
-            if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
-                window.cursor.icon = CursorIcon::Copy;
-            } else if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
-                window.cursor.icon = CursorIcon::Pointer;
-            } else if dist < 0.45 || scale / mouse.zoom < 200.0 {
-                window.cursor.icon = CursorIcon::Grab;
-            } else {
-                window.cursor.icon = CursorIcon::Crosshair;
-            }
-        }
+    let Some((entity, position, draw)) = nearest_circle(&cycles, mouse) else {return};
+
+    *h_vis = Visibility::Visible;
+    commands.entity(h_entity).set_parent(entity);
+    hover_entity.entity = Some(entity);
+    hover_entity.position = position;
+    if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+        window.cursor.icon = CursorIcon::Copy;
+    } else if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+        window.cursor.icon = CursorIcon::Pointer;
+    } else if draw {
+        window.cursor.icon = CursorIcon::Crosshair;
+    } else {
+        window.cursor.icon = CursorIcon::Grab;
     }
 }
 
@@ -195,21 +207,23 @@ fn connect_cycle(
     if !hover_entity.pressed {return}
     let window = windows.single();
     if window.cursor.icon != CursorIcon::Pointer {return}
+
+    if connector.arrow == None {
+        let Some(cycle) = hover_entity.entity else {return};
+        let seg = commands.spawn(
+            Segment::default(),
+        ).id();
+        connector.bow = Some(commands.spawn(
+            Bow(seg)
+        ).set_parent(cycle).id());
+        connector.arrow = Some(commands.spawn(
+            Arrow(seg)
+        ).id());
+    }
+
+    let arrow = connector.arrow.unwrap();
+
     
-    let seg = match connector.segment {
-        Some(seg) => seg,
-        None => {
-            let Some(cycle) = hover_entity.entity else {return};
-            let r = commands.spawn(
-                Segment::default(),
-            ).id();
-            commands.spawn(
-                Bow(r)
-            ).set_parent(cycle);
-            connector.segment = Some(r);
-            r
-        }
-    };
 }
 
 fn clone_circle(
@@ -248,7 +262,6 @@ fn delete_circle(
 ) {
     if !keyboard.just_pressed(KeyCode::Delete) {return}
     let Some(entity) = hover_res.entity else {return};
-    // println!("Deleting {:?}", entity);
     let (hover_entity, mut hover_visible) = hover.single_mut();
     commands.entity(hover_entity).remove_parent();
     *hover_visible = Visibility::Hidden;
