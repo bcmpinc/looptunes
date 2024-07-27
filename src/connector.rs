@@ -3,14 +3,19 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use bevy::sprite::Mesh2dHandle;
 
+use crate::MousePos;
+
 pub struct ConnectorPlugin;
 
 impl Plugin for ConnectorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
-        app.add_systems(Update, bow_tracks_segment);
+        app.add_systems(Update, (bow_tracks_segment, update_connector));
         app.add_systems(PostUpdate, (position_segment_mesh,bow_with_segment,arrow_with_segment));
         app.add_systems(Last, clear_orphaned_segments);
+        app.insert_resource(Connector{
+            segment: None,
+        });
     }
 }
 
@@ -37,6 +42,10 @@ impl Default for Segment {
 
 #[derive(Component)] pub struct Bow(pub Entity);
 #[derive(Component)] pub struct Arrow(pub Entity);
+
+#[derive(Resource)] pub struct Connector {
+    pub segment: Option<Entity>,
+}
 
 fn create_segment_mesh(
     mut commands: Commands,
@@ -147,4 +156,14 @@ fn arrow_with_segment(
             seg.target_size = transform.affine().x_axis.length();
         }
     }
+}
+
+fn update_connector(
+    mut q: Query<&mut Segment>,
+    connector: Res<Connector>,
+    mouse: Res<MousePos>,
+) {
+    let Some(ent) = connector.segment else {return};
+    let Ok(mut seg) = q.get_mut(ent) else {return};
+    seg.target = mouse.position;
 }

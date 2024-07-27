@@ -56,7 +56,10 @@ fn main() {
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
-        .add_systems(Update, (hover_cycle, delete_circle, clone_circle, drag_cycle, draw_cycle, scroll_cycle.run_if(is_shift)).chain())
+        .add_systems(Update, (
+            hover_cycle, 
+            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift))
+        ).chain())
         .add_systems(Update, (colorize, add_circle))
         .insert_resource(Hover::default())
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
@@ -181,6 +184,32 @@ fn drag_cycle(
             cycle.translation += Vec3::new(offset.x * scale, offset.y * -scale, 0.0);
         }
     }
+}
+
+fn connect_cycle(
+    mut commands: Commands,
+    windows: Query<&mut Window>,
+    hover_entity: Res<Hover>,
+    mut connector: ResMut<Connector>,
+) {
+    if !hover_entity.pressed {return}
+    let window = windows.single();
+    if window.cursor.icon != CursorIcon::Pointer {return}
+    
+    let seg = match connector.segment {
+        Some(seg) => seg,
+        None => {
+            let Some(cycle) = hover_entity.entity else {return};
+            let r = commands.spawn(
+                Segment::default(),
+            ).id();
+            commands.spawn(
+                Bow(r)
+            ).set_parent(cycle);
+            connector.segment = Some(r);
+            r
+        }
+    };
 }
 
 fn clone_circle(
