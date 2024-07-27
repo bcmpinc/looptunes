@@ -339,7 +339,7 @@ fn disconnect_cycle(
     // Remove the connecting segment
     for (seg_id, segment) in segments.iter() {
         if segment.child_cycle == entity {
-            commands.try_despawn(seg_id);
+            despawn_segment(&mut commands, seg_id, segment);
         }
     }
 }

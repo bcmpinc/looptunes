@@ -16,11 +16,7 @@ impl Plugin for ConnectorPlugin {
             (bow_with_segment,arrow_with_segment),
             position_segment_mesh,
         ).chain());
-        app.add_systems(Last, (
-            (clear_orphaned_bows, clear_orphaned_arrows),
-            clear_orphaned_segments,
-            (clear_unconnected_bows, clear_unconnected_arrows),
-        ).chain());
+        app.add_systems(Last, clear_orphaned_segments);
         app.insert_resource(Connector(None));
     }
 }
@@ -102,13 +98,23 @@ fn position_segment_mesh(
     }
 }
 
+pub fn despawn_segment(commands: &mut Commands, entity: Entity, segment: &Segment) {
+    commands.try_despawn(segment.bow);
+    commands.try_despawn(segment.arrow);
+    commands.try_despawn(entity);
+}
+
 fn clear_orphaned_segments(
     mut commands: Commands,
     q: Query<(Entity, &Segment)>,
 ) {
-    for (entity, seg) in q.iter() {
-        if commands.get_entity(seg.bow).is_none() {
-            commands.try_despawn(entity);
+    for (entity, segment) in q.iter() {
+        if commands.get_entity(segment.child_cycle).is_none() {
+            despawn_segment(&mut commands, entity, segment);
+        } else if let Some(parent) = segment.parent_cycle {
+            if commands.get_entity(parent).is_none() {
+                despawn_segment(&mut commands, entity, segment);
+            }
         }
     }
 }
@@ -150,26 +156,6 @@ fn bow_tracks_segment(
         let Ok(parent_pos) = q_parent.get(parent.get()) else {continue};
         transform.rotation = Quat::from_rotation_z(Vec2::to_angle(seg.target - parent_pos.translation().truncate())) * Quat::from_rotation_z(PI/2.0);
         transform.translation = transform.rotation * BOW_POSITION;
-    }
-}
-
-fn clear_orphaned_bows(
-    mut commands: Commands,
-    q: Query<Entity, (With<Bow>, Without<Parent>)>,
-) {
-    for entity in q.iter() {
-        commands.try_despawn(entity);
-    }
-}
-
-fn clear_unconnected_bows(
-    mut commands: Commands,
-    q: Query<(Entity, &Bow)>,
-) {
-    for (id, bow) in q.iter() {
-        if commands.get_entity(bow.0).is_none() {
-            commands.try_despawn(id);
-        }
     }
 }
 
@@ -226,31 +212,6 @@ fn connector_arrow_tracks_cursor(
     let delta_clamped = delta.clamp_length(0.3, 0.3);
     arrow.translation = (mouse.position + delta_clamped).extend(0.0);
     arrow.rotation = Quat::from_rotation_z(delta.to_angle() - PI/2.0);
-}
-
-fn clear_orphaned_arrows(
-    mut commands: Commands,
-    q: Query<Entity, (With<Arrow>, Without<Parent>)>,
-    connector: Res<Connector>,
-    segments: Query<&Segment>,
-) {
-    let Some(segment) = connector_segment(&connector, &segments) else {return};
-    for entity in q.iter() {
-        if segment.arrow != entity {
-            commands.try_despawn(entity);
-        }
-    }
-}
-
-fn clear_unconnected_arrows(
-    mut commands: Commands,
-    q: Query<(Entity, &Arrow)>,
-) {
-    for (id, arrow) in q.iter() {
-        if commands.get_entity(arrow.segment).is_none() {
-            commands.try_despawn(id);
-        }
-    }
 }
 
 pub fn connector_segment<'a> (connector: &Connector,segments: &'a Query<&Segment>) -> Option<&'a Segment> {
