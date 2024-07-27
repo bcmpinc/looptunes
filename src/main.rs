@@ -217,9 +217,11 @@ fn connect_cycle(
     mut commands: Commands,
     windows: Query<&mut Window>,
     cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
+    mut cycles2: Query<&mut Cycle>,
     mut hover: ResMut<Hover>,
     mut connector: ResMut<Connector>,
     mouse: Res<MousePos>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !hover.pressed {return}
     let window = windows.single();
@@ -245,10 +247,19 @@ fn connect_cycle(
     let arrow = connector.arrow.unwrap();
 
     if let Some((entity, position, _draw)) = nearest_circle(&cycles, mouse) {
-        if connector.child_cycle != Some(entity) {
+        let cc_id = connector.child_cycle.unwrap();
+        if cc_id != entity {
             hover.entity = Some(entity);
             hover.position = position;
-            commands.entity(arrow).set_parent_in_place(entity);
+            commands.entity(arrow).set_parent(entity);
+            
+            let mut cc = cycles2.get_mut(cc_id).unwrap();
+            let mut phase = 1.25 - position.to_angle() / TAU;
+            if is_shift(keyboard) {
+                phase = (16.0 * phase).round() / 16.0;
+            }
+            cc.phase = phase % 1.0;
+            println!("Phase {:?}", cc.phase);
             return
         }
     }

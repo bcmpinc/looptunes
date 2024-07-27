@@ -166,9 +166,8 @@ fn arrow_copy_phase(
 ) {
     for (arrow, mut transform, parent) in q.iter_mut() {
         if let Ok(cycle) = cycles.get(arrow.child_cycle) {
-            transform.rotation = Quat::from_rotation_z(cycle.phase_in_parent() * TAU);
+            transform.rotation = Quat::from_rotation_z(-cycle.phase_in_parent() * TAU);
             transform.translation = transform.rotation * ARROW_POSITION;
-            println!("Parent is {:?}", parent);
         }
     }
 }
