@@ -24,8 +24,9 @@ pub struct LoopTunesBackend {
     position: u32,
 }
 impl LoopTunesBackend {
-    pub const SAMPLE_RATE: u32 = 48000;
-    pub const PLAY_CHUNK: usize = 1024;
+    const SAMPLE_RATE: u32 = 48000;
+    const FRAME_SIZE: usize = 1024;
+    const BUFFER: usize = Self::FRAME_SIZE * 4;
 
     pub fn reset(&mut self) {
         self.position = 0;
@@ -42,15 +43,15 @@ impl LoopTunesBackend {
     }
 
     pub fn has_free_space(&self) -> bool {
-        self.producer.capacity().unwrap() - self.producer.len() >= Self::PLAY_CHUNK
+        Self::BUFFER - self.producer.len() >= Self::FRAME_SIZE
     }
 
     pub fn time_chunk(&self) -> Vec<f64> {
-        (0..Self::PLAY_CHUNK as u32).map(|i| (self.position + i) as f64 / 48000.0).collect()
+        (0..Self::FRAME_SIZE as u32).map(|i| (self.position + i) as f64 / Self::SAMPLE_RATE as f64).collect()
     }
 
     pub fn elapsed_seconds(&self) -> f32 {
-        self.position as f32 / Self::SAMPLE_RATE as f32
+        (self.position as f32 - (16 * Self::FRAME_SIZE) as f32) / Self::SAMPLE_RATE as f32
     }
 }
 impl Default for LoopTunesBackend {
@@ -60,7 +61,7 @@ impl Default for LoopTunesBackend {
         Box::leak(Box::from(stream)); // Keep stream alive for the duration of the application.
 
         // Create a channel
-        let (tx,rx) = bounded::<f32>(LoopTunesBackend::PLAY_CHUNK*4);
+        let (tx,rx) = bounded::<f32>(LoopTunesBackend::BUFFER);
         let source = LoopSource{consumer: rx, last: 0.0};
 
         // Get something we can send audio to.
