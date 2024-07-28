@@ -5,9 +5,9 @@ use bevy::prelude::*;
 // With inspiration from: https://crates.io/crates/bevy_mouse_tracking_plugin.
 // and: https://bevyengine.org/examples/2d-rendering/2d-viewport-to-world/
 
-pub struct MiceTrack;
+pub struct MiceTrackPlugin;
 
-impl Plugin for MiceTrack {
+impl Plugin for MiceTrackPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(First, tracking)

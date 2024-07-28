@@ -18,6 +18,8 @@ rodio = { version = "0.19.0", default-features = false }
 crossbeam-channel = "0.5.13"
 bevy_embedded_assets = "0.11.0"
 smallvec = "1.13.2"
+copypasta = "0.10.1"
+web-sys = { version = "0.3.69", features = ["Clipboard"] }
 
 [dev-dependencies]
 bevy = {version = "0.14", default-features = false, features = ["android_shared_stdcxx","bevy_asset","bevy_core_pipeline","bevy_sprite","bevy_text","bevy_winit","default_font","png","webgl2","x11","dynamic_linking","multi_threaded","file_watcher"]}

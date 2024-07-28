@@ -9,12 +9,12 @@ use crate::MousePos;
 const ZOOM_SENSITIVITY: Vec3 = Vec3::new(0.9, 0.9, 1.0);
 
 #[derive(Resource, Clone, Copy)]
-pub struct PanCamera(pub MouseButton);
+pub struct PanCameraPlugin(pub MouseButton);
 
 #[derive(SystemSet,Hash,Debug,PartialEq,Eq,Clone,Copy)] pub struct PanSystem;
 #[derive(SystemSet,Hash,Debug,PartialEq,Eq,Clone,Copy)] pub struct ZoomSystem;
 
-impl Plugin for PanCamera {
+impl Plugin for PanCameraPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(*self);
         app.add_systems(Update, (cursor_grab, camera_movement).in_set(PanSystem).chain());
@@ -23,7 +23,7 @@ impl Plugin for PanCamera {
 }
 
 fn camera_movement(
-    pan_camera: Res<PanCamera>,
+    pan_camera: Res<PanCameraPlugin>,
     mut query: Query<&mut Transform, With<Camera2d>>,
     mut motion: EventReader<MouseMotion>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -60,7 +60,7 @@ fn camera_zoom(
 }
 
 fn cursor_grab(
-    pan_camera: Res<PanCamera>,
+    pan_camera: Res<PanCameraPlugin>,
     mut window: Query<&mut Window, With<PrimaryWindow>>,
     buttons: Res<ButtonInput<MouseButton>>,
 ) {

@@ -17,6 +17,7 @@ use rand::{thread_rng, Rng};
 use smallvec::SmallVec;
 
 // Modules
+mod archiving; use archiving::*;
 mod connector; use connector::*;
 mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
@@ -42,11 +43,12 @@ fn main() {
                 }),
                 ..default()
             }),
-            PanCamera(MouseButton::Right),
+            PanCameraPlugin(MouseButton::Right),
             CycleWavePlugin,
-            MiceTrack,
-            LoopTunes,
+            MiceTrackPlugin,
+            LoopTunesPlugin,
             ConnectorPlugin,
+            ArchivingPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)

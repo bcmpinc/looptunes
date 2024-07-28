@@ -8,9 +8,9 @@ use rodio::{OutputStream, Sink, Source};
 
 use crossbeam_channel::{bounded, Receiver, Sender};
 
-pub struct LoopTunes;
+pub struct LoopTunesPlugin;
 
-impl Plugin for LoopTunes {
+impl Plugin for LoopTunesPlugin {
     fn build(&self, app: &mut App) {
         println!("Enabling LoopTunes audio backend Plugin!");
         app.insert_resource(LoopTunesBackend::default());
