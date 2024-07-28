@@ -617,6 +617,7 @@ fn add_circle(
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     let function = match () {
+        _ if keyboard.just_pressed(KeyCode::Backquote) => |_: f32| 1.0,
         _ if keyboard.just_pressed(KeyCode::Digit1) => Wave::SINE,
         _ if keyboard.just_pressed(KeyCode::Digit2) => Wave::TRIANGLE,
         _ if keyboard.just_pressed(KeyCode::Digit3) => Wave::SAWTOOTH,
