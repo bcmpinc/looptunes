@@ -247,7 +247,7 @@ fn connect_create(
     }
     
     // Create a new connector.
-    connector.0 = Some(Segment::spawn(&mut commands, child_cycle));
+    connector.0 = Some(Segment::spawn(&mut commands, child_cycle, None).id());
 }
 
 fn connect_cycle(
@@ -367,6 +367,7 @@ fn clone_circle(
                 for &old_child in children.0.iter() {
                     let Ok((cycle, wave, transform)) = q_cycles.get(old_child) else {continue};
                     let new_child = clone_cycle(&mut commands, cycle, wave, transform).set_parent(new_node).id();
+                    Segment::spawn(&mut commands, new_child, Some(new_node));
                     stack.push((old_child, new_child));
                 }
             }

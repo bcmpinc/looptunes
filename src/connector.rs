@@ -1,6 +1,6 @@
 use std::f32::consts::{PI, TAU};
 
-use bevy::prelude::*;
+use bevy::{ecs::system::EntityCommands, prelude::*};
 use bevy::sprite::Mesh2dHandle;
 
 use crate::{CommandsExt, Cycle, MousePos};
@@ -27,16 +27,16 @@ pub struct Segment {
 
 impl Segment {
     /** Spawns a new segment originating from child_cycle. */
-    pub fn spawn(commands: &mut Commands, child_cycle: Entity) -> Entity {
+    pub fn spawn<'a>(commands: &'a mut Commands, child_cycle: Entity, parent_cycle: Option<Entity>) -> EntityCommands<'a> {
         //println!("Creating new connector for {:?}", child_cycle);
         let bow = commands.spawn(Bow).set_parent(child_cycle).id();
         let arrow = commands.spawn(Arrow).id();
         commands.spawn(Segment{
-            parent_cycle: None,
+            parent_cycle,
             child_cycle,
             bow,
             arrow,
-        }).id()
+        })
     }
 }
 
