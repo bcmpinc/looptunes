@@ -486,15 +486,6 @@ impl PlayPosition {
     }
 }
 
-#[inline]
-fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = f64> + 'a) -> impl Iterator<Item = f32> + 'a {
-    time.map(|t| {
-        let wave_pos = t * cycle.frequency();
-        let index = (wave_pos.fract() * 1024.0) as usize;
-        wave.pattern[index]
-    })
-}
-
 #[derive(Component)]
 struct ChildCycles(SmallVec<[Entity; 8]>);
 
@@ -531,10 +522,18 @@ fn child_cycles(
     }
 }
 
+#[inline]
+fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = &'a f64> + 'a) -> impl Iterator<Item = f32> + 'a {
+    time.map(|&t| {
+        let wave_pos = t * cycle.frequency();
+        let index = (wave_pos.fract() * 1024.0) as usize;
+        wave.pattern[index]
+    })
+}
+
 fn play_everything(
-    q_cycles: Query<(&Cycle,&Wave), With<Playing>>,
+    q_cycles: Query<(&Cycle,&Wave,Option<&ChildCycles>), With<Playing>>,
     q_roots: Query<Entity, (Without<Parent>, With<Playing>)>,
-    q_children: Query<&ChildCycles, With<Playing>>,
     backend: Res<LoopTunesBackend>,
     mut pos: ResMut<PlayPosition>,
 ) {
@@ -548,24 +547,38 @@ fn play_everything(
     struct Node {
         entity: Entity,
         volume: Vec<f32>,
-    };
+    }
     let mut stack: Vec<Node> = Vec::with_capacity(32);
     for entity in q_roots.iter() {
-        let volume = [0.0;1024].into();
+        let volume = [0.2;1024].into();
         stack.push(Node{entity, volume});
     }
 
     // Collect the samples from each node
     let time: Vec<f64> = (0..PLAY_CHUNK as u32).map(|i| (pos.0 + i) as f64 / 48000.0).collect();
-    let result: Vec<f32> = [0.0;1024].into();
+    let mut result: Vec<f32> = [0.0;1024].into();
     while let Some(node) = stack.pop() {
-        // if let Ok(children) = q_children.get(entity)
+        let (cycle, wave, option_children) = q_cycles.get(node.entity).unwrap();
+        if let Some(children) = option_children {
+            _ = children.0 // TODO
+            // Recurse into child nodes
+        } else {
+            // Play this node!
+            let samples 
+                = synthesize(&cycle, &wave, time.iter())
+                .zip(node.volume.iter())
+                .map(|(s,v)| s*v);
 
+            result
+                .iter_mut()
+                .zip(samples)
+                .for_each(|(r, s)| *r += s);
+        }
     }
 
     // Push samples to the audio backend
-    for sample in result.iter() {
-        _ = backend.producer.send(sample * 0.2);
+    for &sample in result.iter() {
+        _ = backend.producer.send(sample);
     }
 
     // Update playback position
