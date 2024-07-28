@@ -523,9 +523,9 @@ fn child_cycles(
 }
 
 #[inline]
-fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = &'a f64> + 'a) -> impl Iterator<Item = f32> + 'a {
-    time.map(|&t| {
-        let wave_pos = t * cycle.frequency();
+fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = &'a f64> + 'a, phase: f64) -> impl Iterator<Item = f32> + 'a {
+    time.map(move |&t| {
+        let wave_pos = t * cycle.frequency() + phase;
         let index = (wave_pos.fract() * 1024.0) as usize;
         wave.pattern[index]
     })
@@ -560,12 +560,26 @@ fn play_everything(
     while let Some(node) = stack.pop() {
         let (cycle, wave, option_children) = q_cycles.get(node.entity).unwrap();
         if let Some(children) = option_children {
-            _ = children.0 // TODO
             // Recurse into child nodes
+            for &child in children.0.iter() {
+                // Get the child cycle, assuming it is being played.
+                let Ok((child_cycle, _, _)) = q_cycles.get(child) else {continue};
+
+                // Mix this node!
+                let child_volume 
+                    = synthesize(&cycle, &wave, time.iter(), child_cycle.phase_in_parent() as f64)
+                    .zip(node.volume.iter())
+                    .map(|(s,v)| s*v);
+
+                stack.push(Node { 
+                    entity: child,
+                    volume: child_volume.collect(),
+                });
+            }
         } else {
             // Play this node!
             let samples 
-                = synthesize(&cycle, &wave, time.iter())
+                = synthesize(&cycle, &wave, time.iter(), 0.0)
                 .zip(node.volume.iter())
                 .map(|(s,v)| s*v);
 
