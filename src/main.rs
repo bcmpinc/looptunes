@@ -248,6 +248,8 @@ fn connect_create(
         if seg.child_cycle == child_cycle {
             // Repurpose existing connector.
             connector.0 = Some(ent);
+            // Remove self from parent
+            commands.entity(child_cycle).remove_parent_in_place();
             return
         }
     }

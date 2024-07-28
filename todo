@@ -9,7 +9,7 @@ x Play circle tree
 x Modify wave
 
 Bug Fixing:
-- When changing a connection it does not drop its parent.
+x When changing a connection it does not drop its parent.
 - Playing animation not in sync with audio.
 x Drawing on nodes that are children fails.
 
