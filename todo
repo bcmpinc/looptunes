@@ -5,13 +5,17 @@ x Play circle
 x Add circles
 x Connect circles
 x Fix circle scaling with connections.
-- Play circle tree
+x Play circle tree
 x Modify wave
+
+Bug Fixing:
+- When changing a connection it does not drop its parent.
+- Playing animation not in sync with audio.
+- Drawing on nodes that are children fails.
 
 Stretches:
 x Copy circles?
 x Delete circles?
-- Delete entire circle trees?
 - Clone entire trees?
+- Delete entire circle trees?
 - Persistance?
-- Undo?
