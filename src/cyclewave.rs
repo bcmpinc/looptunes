@@ -84,7 +84,7 @@ impl Default for Cycle {
 
 #[derive(Component)] struct WaveSubComponent;
 
-const TEXT_SCALE: f32 = 0.001;
+const TEXT_SCALE: f32 = 0.002;
 fn create_children(
     mut commands: Commands,
     q: Query<(Entity,Ref<Cycle>,&Wave)>,
@@ -167,7 +167,7 @@ fn rotate_cyclewaves(
     for (parent, mut transform) in q_child.iter_mut() {
         let Ok((cycle, playing)) = q_parent.get(parent.get()) else {continue};
         let frequency = if playing.is_none() {0.0} else {cycle.frequency() as f32};
-        let scale = cycle.scale();
+        let scale = cycle.scale() * 2.0;
         transform.scale = Vec3::new(scale, scale, 1.0);
         transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);
     }

@@ -81,7 +81,7 @@ fn setup(
     
     let highlight = commands.spawn((
         ColorMesh2dBundle{
-            mesh: Mesh2dHandle(meshes.add(Annulus::new(0.54, 0.55).mesh().resolution(16))),
+            mesh: Mesh2dHandle(meshes.add(Annulus::new(1.08, 1.10).mesh().resolution(16))),
             material: materials.add(ColorMaterial::from_color(Color::WHITE)),
             visibility: Visibility::Hidden,
             ..default()
@@ -110,13 +110,16 @@ pub struct Hover {
 /** Moves the Higlight entity to whatever the Hover resource points to. */
 fn track_hover(
     mut commands: Commands, 
-    mut entity: Query<(&mut Visibility, Option<&Parent>), With<Highlight>>,
+    mut entity: Query<(&mut Visibility, &mut Transform, Option<&Parent>), With<Highlight>>,
+    cycles: Query<&Cycle>,
     hover: Res<Hover>,
 ){
     use Visibility::*;
-    let (mut visible, parent) = entity.get_mut(hover.highlight).unwrap();
+    let (mut visible, mut transform, parent) = entity.get_mut(hover.highlight).unwrap();
     match hover.entity {
         Some(hover_entity) => {
+            let scale = cycles.get(hover_entity).unwrap().scale();
+            transform.scale = Vec3::new(scale, scale, 1.0);
             if parent == None || parent.unwrap().get() != hover_entity {
                 assert!(hover.highlight != hover_entity);
                 commands.entity(hover.highlight).set_parent(hover_entity);
@@ -134,16 +137,16 @@ fn track_hover(
 }
 
 fn nearest_circle(
-    cycles: &Query<(Entity, &GlobalTransform), With<Cycle>>,
+    cycles: &Query<(Entity, &mut Cycle, &GlobalTransform)>,
     mouse: Res<MousePos>,
 ) -> Option<(Entity, Vec2, bool)> {
     let mut res: Option<(Entity, Vec2, bool)> = None;
     let mut nearest = f32::INFINITY;
 
     // Find "nearest" circle.
-    for (entity, cycle_pos) in cycles.iter() {
-        let translation = cycle_pos.translation();
-        let scale = cycle_pos.affine().x_axis[0] / 2.0;
+    for (entity, cycle, transform) in cycles.iter() {
+        let translation = transform.translation();
+        let scale = cycle.scale();
         let pos = (mouse.position - translation.xy()) / scale;
         let dist = pos.length();
         let score = (dist + 1.0) * scale;
@@ -156,7 +159,7 @@ fn nearest_circle(
 }
 
 fn hover_cycle(
-    cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
+    cycles: Query<(Entity, &mut Cycle, &GlobalTransform)>, // Does not need to be mut, but function parameter type checking...
     mouse: Res<MousePos>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut hover: ResMut<Hover>,
@@ -252,8 +255,7 @@ fn connect_create(
 
 fn connect_cycle(
     mut windows: Query<&mut Window>,
-    cycles: Query<(Entity, &GlobalTransform), With<Cycle>>,
-    mut cycles2: Query<&mut Cycle>,
+    mut cycles: Query<(Entity, &mut Cycle, &GlobalTransform)>,
     mut hover: ResMut<Hover>,
     connector: Res<Connector>,
     mouse: Res<MousePos>,
@@ -277,7 +279,7 @@ fn connect_cycle(
             hover.entity = Some(entity);
             hover.position = position;
             segment.parent_cycle = Some(entity);
-            let mut cc = cycles2.get_mut(cc_id).unwrap();
+            let (_, mut cc, _) = cycles.get_mut(cc_id).unwrap();
             let mut phase = 1.25 - position.to_angle() / TAU;
             if is_shift(keyboard) {
                 phase = (16.0 * phase).round() / 16.0;
@@ -410,7 +412,7 @@ fn get_index(pos: Vec2) -> usize {
 }
 
 fn draw_cycle(
-    mut q_cycles: Query<(&Transform, &mut Wave), (With<Cycle>,Without<Camera2d>)>,
+    mut q_cycles: Query<(&Cycle, &Transform, &mut Wave)>,
     mut hover: ResMut<Hover>,
     windows: Query<&mut Window>,
     mouse: Res<MousePos>,
@@ -420,10 +422,10 @@ fn draw_cycle(
     if window.cursor.icon != CursorIcon::Crosshair {return}
 
     let Some(cycle_id) = hover.entity else {return};
-    let Ok((cycle, mut wave)) = q_cycles.get_mut(cycle_id) else {return};
+    let Ok((cycle, transform, mut wave)) = q_cycles.get_mut(cycle_id) else {return};
     
-    let translation = cycle.translation;
-    let scale = cycle.scale.x / 2.0;
+    let translation = transform.translation;
+    let scale = cycle.scale();
     let pos = (mouse.position - translation.xy()) / scale;
     let a = hover.position;
     let b = pos;
