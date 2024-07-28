@@ -18,16 +18,40 @@ impl Plugin for LoopTunes {
     }
 }
 
-pub const PLAY_CHUNK: usize = 1024;
-pub fn backend_has_capacity(
-    backend: Res<LoopTunesBackend>,
-) -> bool {
-    backend.producer.capacity().unwrap() - backend.producer.len() >= PLAY_CHUNK
-}
-
 #[derive(Resource)]
 pub struct LoopTunesBackend {
-    pub producer: Sender<f32>,
+    producer: Sender<f32>,
+    position: u32,
+}
+impl LoopTunesBackend {
+    pub const SAMPLE_RATE: u32 = 48000;
+    pub const PLAY_CHUNK: usize = 1024;
+
+    pub fn reset(&mut self) {
+        self.position = 0;
+    }
+
+    pub fn send_buffer(&mut self, samples: &Vec<f32>) {
+        for &sample in samples.iter() {
+            _ = self.producer.send(sample);
+        }
+    
+        // Update playback position
+        self.position += samples.len() as u32;
+        self.position %= Self::SAMPLE_RATE * 256 * 3;
+    }
+
+    pub fn has_free_space(&self) -> bool {
+        self.producer.capacity().unwrap() - self.producer.len() >= Self::PLAY_CHUNK
+    }
+
+    pub fn time_chunk(&self) -> Vec<f64> {
+        (0..Self::PLAY_CHUNK as u32).map(|i| (self.position + i) as f64 / 48000.0).collect()
+    }
+
+    pub fn elapsed_seconds(&self) -> f32 {
+        self.position as f32 / Self::SAMPLE_RATE as f32
+    }
 }
 impl Default for LoopTunesBackend {
     fn default() -> Self {
@@ -36,7 +60,7 @@ impl Default for LoopTunesBackend {
         Box::leak(Box::from(stream)); // Keep stream alive for the duration of the application.
 
         // Create a channel
-        let (tx,rx) = bounded::<f32>(PLAY_CHUNK*4);
+        let (tx,rx) = bounded::<f32>(LoopTunesBackend::PLAY_CHUNK*4);
         let source = LoopSource{consumer: rx, last: 0.0};
 
         // Get something we can send audio to.
@@ -44,7 +68,10 @@ impl Default for LoopTunesBackend {
         sink.append(source);
         Box::leak(Box::from(sink));
         
-        Self { producer: tx }
+        Self { 
+            producer: tx,
+            position: 0,
+        }
     }
 }
 
@@ -80,7 +107,7 @@ impl Source for LoopSource {
 
     #[inline]
     fn sample_rate(&self) -> u32 {
-        48000
+        LoopTunesBackend::SAMPLE_RATE
     }
 
     #[inline]

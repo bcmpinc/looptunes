@@ -66,9 +66,8 @@ fn main() {
         ).chain())
         .add_systems(Update, (colorize, add_circle))
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
-        .add_systems(PostUpdate, play_everything.run_if(backend_has_capacity))
+        .add_systems(PostUpdate, play_everything)
         .add_systems(PostUpdate, track_hover)
-        .insert_resource(PlayPosition(0))
         .run();
 }
 
@@ -480,14 +479,6 @@ fn scroll_cycle(
 #[derive(Component)]
 struct Highlight;
 
-#[derive(Resource)]
-struct PlayPosition(u32);
-impl PlayPosition {
-    fn elapsed_seconds(&self) -> f32 {
-        self.0 as f32 / 48000.0
-    }
-}
-
 #[derive(Component)]
 struct ChildCycles(SmallVec<[Entity; 8]>);
 
@@ -536,12 +527,14 @@ fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = &
 fn play_everything(
     q_cycles: Query<(&Cycle,&Wave,Option<&ChildCycles>), With<Playing>>,
     q_roots: Query<Entity, (Without<Parent>, With<Playing>)>,
-    backend: Res<LoopTunesBackend>,
-    mut pos: ResMut<PlayPosition>,
+    mut backend: ResMut<LoopTunesBackend>,
 ) {
+    // Only produce when there is space in the buffer.
+    if !backend.has_free_space() {return}
+    
     // If nothing is playing reset playback.
     if q_roots.is_empty() {
-        pos.0 = 0;
+        backend.reset();
         return
     }
 
@@ -557,7 +550,7 @@ fn play_everything(
     }
 
     // Collect the samples from each node
-    let time: Vec<f64> = (0..PLAY_CHUNK as u32).map(|i| (pos.0 + i) as f64 / 48000.0).collect();
+    let time: Vec<f64> = backend.time_chunk();
     let mut result: Vec<f32> = [0.0;1024].into();
     while let Some(node) = stack.pop() {
         let (cycle, wave, option_children) = q_cycles.get(node.entity).unwrap();
@@ -592,14 +585,7 @@ fn play_everything(
         }
     }
 
-    // Push samples to the audio backend
-    for &sample in result.iter() {
-        _ = backend.producer.send(sample);
-    }
-
-    // Update playback position
-    pos.0 += PLAY_CHUNK as u32;
-    pos.0 %= 48000 * 256 * 3;
+    backend.send_buffer(&result);
 }
 
 fn spawn_cyclewaves(

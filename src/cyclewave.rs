@@ -10,7 +10,7 @@ use bevy::sprite::{Anchor, Material2d, Material2dKey, Material2dPlugin, Material
 
 use rand::{thread_rng, Rng};
 
-use crate::{CommandsExt, Hover, PlayPosition};
+use crate::{CommandsExt, Hover, LoopTunesBackend};
 
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
@@ -191,7 +191,7 @@ pub struct WaveCycleImage;
 fn rotate_cyclewaves(
     mut q_child: Query<(&Parent, &mut Transform), With<WaveCycleImage>>,
     q_parent: Query<(&Cycle, Option<&Playing>)>,
-    time: Res<PlayPosition>,
+    time: Res<LoopTunesBackend>,
     hover: Res<Hover>,
 ) {
     for (parent, mut transform) in q_child.iter_mut() {
