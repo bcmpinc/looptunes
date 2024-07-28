@@ -63,7 +63,7 @@ fn main() {
         ).chain())
         .add_systems(Update, (colorize, add_circle))
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
-        .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
+        .add_systems(PostUpdate, play_everything.run_if(backend_has_capacity))
         .add_systems(PostUpdate, track_hover)
         .insert_resource(PlayPosition(0))
         .run();
@@ -483,21 +483,40 @@ impl PlayPosition {
     }
 }
 
-fn play_anything(
-    q_cycles: Query<(&Cycle,&Wave)>,
-    hover: Res<Hover>,
+#[inline]
+fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = f64> + 'a) -> impl Iterator<Item = f32> + 'a {
+    time.map(|t| {
+        let wave_pos = t * cycle.frequency();
+        let index = (wave_pos.fract() * 1024.0) as usize;
+        wave.pattern[index]
+    })
+}
+
+fn play_everything(
+    q_cycles: Query<(&Cycle,&Wave), With<Playing>>,
+    q_roots: Query<Entity, (Without<Parent>, With<Playing>)>,
+    q_children: Query<&Children, (With<Cycle>, With<Playing>)>,
     backend: Res<LoopTunesBackend>,
     mut pos: ResMut<PlayPosition>,
 ) {
-    let Some(entity) = hover.entity else {return};
-    let Ok((cycle, wave)) = q_cycles.get(entity) else {return};
-    for i in 0..PLAY_CHUNK as u32 {
-        let t = (pos.0 + i) as f64 / 48000.0;
-        let wave_pos = t * cycle.frequency();
-        let index = (wave_pos.fract() * 1024.0) as usize;
-        let sample = wave.pattern[index] - wave.average;
+    if q_roots.is_empty() {
+        // If nothing is playing reset playback.
+        pos.0 = 0;
+        return
+    }
+
+    let time: Vec<f64> = (0..PLAY_CHUNK as u32).map(|i| (pos.0 + i) as f64 / 48000.0).collect();
+    let result: Vec<f32> = [0.0;1024].into();
+    
+    for root in q_roots.iter() {
+
+
+    }
+
+    for sample in result.iter() {
         _ = backend.producer.send(sample * 0.2);
     }
+
     pos.0 += PLAY_CHUNK as u32;
     pos.0 %= 48000 * 256 * 3;
 }
