@@ -169,10 +169,11 @@ fn toggle_play(
     let Some(hover_entity) = hover.entity else {return};
     let new_play_state = q_cycle.get(hover_entity).unwrap().is_none();
     let mut set_state = |entity: Entity| {
+        let Some(mut ec) = commands.get_entity(entity) else {return};
         if new_play_state {
-            commands.entity(entity).insert(Playing);
+            ec.insert(Playing);
         } else {
-            commands.entity(entity).remove::<Playing>();
+            ec.remove::<Playing>();
         }
     };
     set_state(hover_entity);

@@ -10,7 +10,7 @@ x Modify wave
 
 Bug Fixing:
 x When changing a connection it does not drop its parent.
-- Playing animation not in sync with audio.
+x Playing animation not in sync with audio.
 x Drawing on nodes that are children fails.
 
 Stretches:

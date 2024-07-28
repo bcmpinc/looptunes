@@ -518,7 +518,7 @@ fn child_cycles(
 #[inline]
 fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = &'a f64> + 'a, phase: f64) -> impl Iterator<Item = f32> + 'a {
     time.map(move |&t| {
-        let wave_pos = t * cycle.frequency() + phase;
+        let wave_pos = t * cycle.frequency() - phase;
         let index = (wave_pos.fract() * 1024.0) as usize;
         wave.pattern[index]
     })
