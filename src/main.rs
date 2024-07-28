@@ -318,7 +318,7 @@ fn connect_drop(
 
     //println!("removing");
     // No new parent, delete the connector
-    commands.try_despawn(connector.0);
+    despawn_segment(&mut commands, connector.0.unwrap(), segment);
     connector.0 = None;
 }
 

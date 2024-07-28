@@ -38,13 +38,8 @@ impl Segment {
     pub fn spawn(commands: &mut Commands, child_cycle: Entity) -> Entity {
         //println!("Creating new connector for {:?}", child_cycle);
         let segment = commands.spawn_empty().id();
-        let bow = commands.spawn(
-            Bow(segment)
-        ).set_parent(child_cycle).id();
-        let arrow = commands.spawn(Arrow{
-            segment,
-            child_cycle,
-        }).id();
+        let bow = commands.spawn(Bow(segment)).set_parent(child_cycle).id();
+        let arrow = commands.spawn(Arrow(segment)).id();
         commands.entity(segment).insert(Segment{
             source: default(), 
             target: default(), 
@@ -59,14 +54,9 @@ impl Segment {
 }
 
 #[derive(Component)] struct Bow(pub Entity);
-#[derive(Component)] struct Arrow{
-    pub segment: Entity,
-    pub child_cycle: Entity,
-}
+#[derive(Component)] struct Arrow(pub Entity);
 
 #[derive(Resource)] pub struct Connector(pub Option<Entity>);
-
-// TODO: Attach arrow to parent cycle.
 
 fn create_segment_mesh(
     mut commands: Commands,
@@ -175,14 +165,31 @@ fn create_arrow_sprite(
 }
 
 fn arrow_copy_phase(
-    mut q: Query<(&Arrow,&mut Transform), With<Parent>>,
+    mut commands: Commands,
+    mut q: Query<&Segment>,
+    mut arrows: Query<(&mut Transform, Option<&Parent>)>,
     cycles: Query<&Cycle>,
 ) {
-    for (arrow, mut transform) in q.iter_mut() {
-        if let Ok(cycle) = cycles.get(arrow.child_cycle) {
-            transform.rotation = Quat::from_rotation_z(-cycle.phase_in_parent() * TAU);
-            transform.translation = transform.rotation * ARROW_POSITION;
+    for segment in q.iter_mut() {
+        let Ok(cycle) = cycles.get(segment.child_cycle) else {continue};
+        let Ok((mut transform, arrow_parent)) = arrows.get_mut(segment.arrow) else {continue};
+        let Some(mut arrow_entity) = commands.get_entity(segment.arrow) else {continue};
+        match (segment.parent_cycle, arrow_parent) {
+            (Some(x), Some(y)) if x != y.get() => {
+                arrow_entity.set_parent(x);
+            },
+            (Some(x), None) => {
+                arrow_entity.set_parent(x);
+            },
+            (None, Some(_)) => {
+                arrow_entity.remove_parent_in_place();
+                return;
+            },
+            (None, None) => return,
+            _ => ()
         }
+        transform.rotation = Quat::from_rotation_z(-cycle.phase_in_parent() * TAU);
+        transform.translation = transform.rotation * ARROW_POSITION;
     }
 }
 
@@ -191,7 +198,7 @@ fn arrow_with_segment(
     mut segments: Query<&mut Segment>,
 ) {
     for (arrow, transform) in q.iter() {
-        if let Ok(mut seg) = segments.get_mut(arrow.segment) {
+        if let Ok(mut seg) = segments.get_mut(arrow.0) {
             seg.target = transform.transform_point(Vec3::new(0.0,100.0, 0.0)).truncate();
             seg.target_size = transform.affine().x_axis.length();
         }
