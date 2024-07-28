@@ -43,7 +43,7 @@ fn main() {
                     title: "Loop Tunes!".into(),
                     present_mode: PresentMode::AutoNoVsync,
                     fit_canvas_to_parent: true,
-                    prevent_default_event_handling: false,
+                    prevent_default_event_handling: true,
                     window_theme: Some(WindowTheme::Dark),
                     ..default()
                 }),
@@ -61,7 +61,7 @@ fn main() {
         .add_systems(Update, (
             hover_cycle, 
             connect_create,
-            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift), disconnect_cycle),
+            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift)),
             connect_drop
         ).chain())
         .add_systems(Update, (colorize, add_circle))
@@ -248,7 +248,7 @@ fn connect_create(
             // Repurpose existing connector.
             connector.0 = Some(ent);
             // Remove self from parent
-            commands.entity(child_cycle).remove_parent_in_place();
+            commands.entity(child_cycle).remove_parent_in_place().remove::<Playing>();
             return
         }
     }
@@ -298,12 +298,14 @@ fn connect_cycle(
     }
 }
 
+/** Fires when the player releases the mouse button while dragging a connector. */
 fn connect_drop(
     mut commands: Commands,
     hover: Res<Hover>,
     mut connector: ResMut<Connector>,
     segments: Query<&Segment>,
     parents: Query<&Parent>,
+    playing: Query<(), With<Playing>>,
 ) {
     if hover.pressed {return}
     let Some(segment) = connector_segment(&connector, &segments) else {return};
@@ -315,7 +317,11 @@ fn connect_drop(
             //println!("attached to {:?}", parent);
             assert!(cc_id != parent);
             assert!(segment.parent_cycle != None);
-            commands.entity(cc_id).set_parent_in_place(parent);
+            let mut ec = commands.entity(cc_id);
+            ec.set_parent_in_place(parent);
+            if playing.get(parent).is_ok() {
+                ec.insert(Playing);
+            }
             connector.0 = None;
             return;
         }
@@ -325,28 +331,6 @@ fn connect_drop(
     // No new parent, delete the connector
     despawn_segment(&mut commands, connector.0.unwrap(), segment);
     connector.0 = None;
-}
-
-fn disconnect_cycle(
-    mut commands: Commands,
-    hover: Res<Hover>,
-    connector: Res<Connector>,
-    segments: Query<(Entity, &Segment)>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    if !keyboard.just_pressed(KeyCode::KeyX) {return}
-    if connector.0 != None {return}
-    let Some(entity) = hover.entity else {return};
-
-    // Remove hovered cycle from the cycle hierarchy
-    commands.entity(entity).remove_parent_in_place();
-
-    // Remove the connecting segment
-    for (seg_id, segment) in segments.iter() {
-        if segment.child_cycle == entity {
-            despawn_segment(&mut commands, seg_id, segment);
-        }
-    }
 }
 
 fn clone_circle(
@@ -390,6 +374,7 @@ fn clear_children_in_place(
                     c.remove_parent();
                 } else {
                     c.remove_parent_in_place();
+                    c.remove::<Playing>();
                 }
             }
         }

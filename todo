@@ -14,8 +14,8 @@ x Playing animation not in sync with audio.
 x Drawing on nodes that are children fails.
 
 Stretches:
-- Pause on disconnect
-- Copy play state upon connect
+x Pause on disconnect
+x Copy play state upon connect
 x Copy circles?
 x Delete circles?
 - Clone entire trees?
