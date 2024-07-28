@@ -19,6 +19,8 @@ Available on:
 - Hold shift to insert new circles with 1Hz instead of 440Hz.
 - Clone circles by holding ctrl while dragging them.
 - Delete circles with the Delete key (there is no undo though).
+- Add connection by holding shift and dragging from one circle to another.
+- While dragging a new connection, hold shift for angle snapping, or release shift for free positioning.
 
 ## License
 
