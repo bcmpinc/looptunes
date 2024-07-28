@@ -21,7 +21,6 @@ mod looptunes; use looptunes::*;
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
 mod utilities; use utilities::*;
-mod wireframe; use wireframe::*;
 
 fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
     keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
@@ -48,7 +47,6 @@ fn main() {
                 }),
                 ..default()
             }),
-            Wireframe(KeyCode::Space),
             PanCamera(MouseButton::Right),
             CycleWavePlugin,
             MiceTrack,
