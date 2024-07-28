@@ -1,7 +1,7 @@
 # Loop-Tunes
 
-<p style="text-align:center;font-style:italic;">
- " Draw your own kind of music.<br/>Paint your own special song! " 
+<p align="center">
+"<em>Draw your own kind of music.<br/>Paint your own special song!</em>"
 </p>
 
 Loop-tunes is a chip-tune music creation sandbox game. It works by compositing multiple wave forms on top of each other.
