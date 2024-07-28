@@ -37,6 +37,7 @@ The procedural audio is played through a [tiny custom backend](src/looptunes.rs)
 - Hold *shift* to insert new circles with 1Hz instead of 440Hz.
 - Clone circles by holding *ctrl* while dragging them.
 - Delete circles using the *delete* key (note that there is no undo).
+- Delete entire trees using *shift + delete* (there is still no undo).
 
 **Connectivity**
 - Add/change connection by holding *shift* and dragging from one circle to another.

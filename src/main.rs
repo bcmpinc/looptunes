@@ -8,7 +8,7 @@ use bevy::transform::components::Transform;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
 use bevy::core_pipeline::core_2d::Camera2dBundle;
-use bevy::ecs::system::Commands;
+use bevy::ecs::system::{Commands, EntityCommands};
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, PresentMode, Window, WindowTheme};
 use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
@@ -326,32 +326,52 @@ fn connect_drop(
     connector.0 = None;
 }
 
-fn clone_circle(
-    mut commands: Commands,
-    q_cycles: Query<(&Cycle, &Wave)>,
-    mut hover: ResMut<Hover>,
-    mouse: Res<MousePos>,
-    mut windows: Query<&mut Window>,
-) {
-    if !hover.pressed {return}
-    let Some(ent) = hover.entity else {return};
-    let Ok((cycle, wave)) = q_cycles.get(ent) else {return};
-
-    let mut window = windows.single_mut();
-    if window.cursor.icon != CursorIcon::Copy {return}
-    window.cursor.icon = CursorIcon::Grabbing; 
-
-    let entity = commands.spawn(CycleWaveBundle{
+fn clone_cycle<'a>(commands: &'a mut Commands, cycle: &Cycle, wave: &Wave, transform: &Transform) -> EntityCommands<'a>{
+    commands.spawn(CycleWaveBundle{
         cycle: cycle.clone(),
         wave: Wave{
             pattern: wave.pattern.clone(),
             ..default()
         },
-        transform: Transform::from_translation(mouse.position.extend(0.0)),
+        transform: transform.clone(),
         ..default()
-    });
+    })
+}
 
-    hover.entity = Some(entity.id());
+fn clone_circle(
+    mut commands: Commands,
+    q_cycles: Query<(&Cycle, &Wave, &Transform)>,
+    q_children: Query<&ChildCycles>,
+    mouse: Res<MousePos>,
+    mut hover: ResMut<Hover>,
+    mut windows: Query<&mut Window>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if !hover.pressed {return}
+    let Some(old_cycle) = hover.entity else {return};
+    
+    let mut window = windows.single_mut();
+    if window.cursor.icon != CursorIcon::Copy {return}
+    window.cursor.icon = CursorIcon::Grabbing; 
+    
+    let Ok((cycle, wave, _)) = q_cycles.get(old_cycle) else {return};
+    let transform = &Transform::from_translation(mouse.position.extend(0.0));
+    let new_cycle = clone_cycle(&mut commands, cycle, wave, transform).id();
+    hover.entity = Some(new_cycle);
+
+    if is_shift(&keyboard) {
+        let mut stack: Vec<(Entity,Entity)> = Vec::new();
+        stack.push((old_cycle, new_cycle));
+        while let Some((old_node, new_node)) = stack.pop() {
+            if let Ok(children) = q_children.get(old_node) {
+                for &old_child in children.0.iter() {
+                    let Ok((cycle, wave, transform)) = q_cycles.get(old_child) else {continue};
+                    let new_child = clone_cycle(&mut commands, cycle, wave, transform).set_parent(new_node).id();
+                    stack.push((old_child, new_child));
+                }
+            }
+        }        
+    }
 }
 
 fn delete_circle(
