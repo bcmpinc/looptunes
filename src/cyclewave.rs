@@ -61,7 +61,7 @@ impl Cycle {
         Self::FREQUENCY_LIST[self.frequency as usize].0
     }
     pub fn scale(&self) -> f32 {
-        f32::max(4. / self.frequency().sqrt() as f32, 1.)
+        f32::max(2. / self.frequency().sqrt().sqrt() as f32, 1.)
     }
     #[allow(unused)]
     pub fn phase_in_parent(&self) -> f32 {
