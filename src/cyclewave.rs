@@ -10,7 +10,7 @@ use bevy::sprite::{Anchor, Material2d, Material2dKey, Material2dPlugin, Material
 
 use rand::{thread_rng, Rng};
 
-use crate::CommandsExt;
+use crate::{CommandsExt, Hover, PlayPosition};
 
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
@@ -18,13 +18,13 @@ impl Plugin for CycleWavePlugin {
         app 
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(SpawnScene, (update_textures, create_children).chain())
-            .add_systems(Update, (update_frequency, rotate_cyclewaves).chain())
+            .add_systems(Update, (update_frequency, toggle_play, rotate_cyclewaves).chain())
             .add_systems(PostUpdate, clean_orphans)
         ;
     }
 }
 
-#[derive(Component,Clone)] struct Playing;
+#[derive(Component,Clone)] pub struct Playing;
 
 /**
  * Component that describes an audio cycle. 
@@ -156,17 +156,46 @@ fn update_frequency(
     }
 }
 
+fn toggle_play(
+    mut commands: Commands,
+    hover: Res<Hover>,
+    q_cycle: Query<Option<&Playing>, With<Cycle>>,
+    q_children: Query<&Children, With<Cycle>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if !keyboard.just_pressed(KeyCode::Space) {return}
+    let Some(hover_entity) = hover.entity else {return};
+    let new_play_state = q_cycle.get(hover_entity).unwrap().is_none();
+    let mut set_state = |entity: Entity| {
+        if new_play_state {
+            commands.entity(entity).insert(Playing);
+        } else {
+            commands.entity(entity).remove::<Playing>();
+        }
+    };
+    set_state(hover_entity);
+
+    if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+        for descendant in q_children.iter_descendants(hover_entity) {
+            set_state(descendant);
+        }
+    }
+    
+}
+
 #[derive(Component,Clone)]
 pub struct WaveCycleImage;
 
 fn rotate_cyclewaves(
     mut q_child: Query<(&Parent, &mut Transform), With<WaveCycleImage>>,
     q_parent: Query<(&Cycle, Option<&Playing>)>,
-    time: Res<Time>,
+    time: Res<PlayPosition>,
+    hover: Res<Hover>,
 ) {
     for (parent, mut transform) in q_child.iter_mut() {
         let Ok((cycle, playing)) = q_parent.get(parent.get()) else {continue};
-        let frequency = if playing.is_none() {0.0} else {cycle.frequency() as f32};
+        let playing = playing.is_some() && Some(parent.get()) != hover.entity;
+        let frequency = if playing {cycle.frequency() as f32} else {0.0};
         let scale = cycle.scale() * 2.0;
         transform.scale = Vec3::new(scale, scale, 1.0);
         transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);

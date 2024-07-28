@@ -63,7 +63,7 @@ fn main() {
         ).chain())
         .add_systems(Update, (colorize, add_circle))
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
-        //.add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
+        .add_systems(PostUpdate, play_anything.run_if(backend_has_capacity))
         .add_systems(PostUpdate, track_hover)
         .insert_resource(PlayPosition(0))
         .run();
@@ -75,7 +75,7 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn(Camera2dBundle{
-        transform: Transform::from_scale(Vec3::new(0.01,0.01,1.0)),
+        transform: Transform::from_scale(Vec3::new(0.02,0.02,1.0)),
         ..default()
     });
     
@@ -477,8 +477,12 @@ struct Highlight;
 
 #[derive(Resource)]
 struct PlayPosition(u32);
+impl PlayPosition {
+    fn elapsed_seconds(&self) -> f32 {
+        self.0 as f32 / 48000.0
+    }
+}
 
-#[allow(unused)]
 fn play_anything(
     q_cycles: Query<(&Cycle,&Wave)>,
     hover: Res<Hover>,
@@ -503,11 +507,11 @@ fn spawn_cyclewaves(
 ) {
     // Example circle data
     let nodes = vec![
-        (-3.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE),
-        (-1.5, 0.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH),
+        (-6.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE),
+        (-3.0, 0.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH),
         ( 0.0, 0.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE),
-        ( 1.5, 0.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE),
-        ( 3.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE),
+        ( 3.0, 0.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE),
+        ( 6.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE),
     ];
 
     for (x,y,color,f) in nodes {
