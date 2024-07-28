@@ -87,11 +87,11 @@ impl Default for Cycle {
 const TEXT_SCALE: f32 = 0.002;
 fn create_children(
     mut commands: Commands,
-    q: Query<(Entity,Ref<Cycle>,&Wave)>,
+    q: Query<(Entity,Ref<Cycle>,&Wave,Option<&Playing>)>,
     mut meshes: ResMut<Assets<Mesh>>, 
     mut materials: ResMut<Assets<WaveMaterial>>,
 ) {
-    for (entity, cycle, wave) in &q {
+    for (entity, cycle, wave, playing) in &q {
         if cycle.is_added() {
             let mesh = Rectangle::default();
             commands.entity(entity).with_children(|parent| {
@@ -127,8 +127,10 @@ fn create_children(
                 ));
             });
         }
-        if cycle.is_changed() {
+        if playing.is_some() {
             materials.get_mut(&wave.material).unwrap().color = cycle.color;
+        } else {
+            materials.get_mut(&wave.material).unwrap().color = cycle.color * 0.3 + LinearRgba::WHITE * 0.3;
         }
     }
 }
