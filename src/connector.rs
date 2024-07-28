@@ -9,13 +9,10 @@ pub struct ConnectorPlugin;
 
 impl Plugin for ConnectorPlugin {
     fn build(&self, app: &mut App) {
+        app.add_systems(PreUpdate, arrow_sync_parent);
+        app.add_systems(Update, connector_arrow_tracks_cursor);
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
-        app.add_systems(PreUpdate, arrow_copy_phase);
-        app.add_systems(Update, (bow_tracks_segment, connector_arrow_tracks_cursor));
-        app.add_systems(PostUpdate, (
-            (bow_with_segment,arrow_with_segment),
-            position_segment_mesh,
-        ).chain());
+        app.add_systems(PostUpdate, position_segment_mesh);
         app.add_systems(Last, clear_orphaned_segments);
         app.insert_resource(Connector(None));
     }
@@ -23,10 +20,6 @@ impl Plugin for ConnectorPlugin {
 
 #[derive(Component)]
 pub struct Segment {
-    pub source: Vec2,
-    pub target: Vec2,
-    pub source_size: f32,
-    pub target_size: f32,
     pub child_cycle: Entity,
     pub parent_cycle: Option<Entity>,
     bow: Entity,
@@ -37,14 +30,9 @@ impl Segment {
     /** Spawns a new segment originating from child_cycle. */
     pub fn spawn(commands: &mut Commands, child_cycle: Entity) -> Entity {
         //println!("Creating new connector for {:?}", child_cycle);
-        let segment = commands.spawn_empty().id();
-        let bow = commands.spawn(Bow(segment)).set_parent(child_cycle).id();
-        let arrow = commands.spawn(Arrow(segment)).id();
-        commands.entity(segment).insert(Segment{
-            source: default(), 
-            target: default(), 
-            source_size: 1.0, 
-            target_size: 1.0, 
+        let bow = commands.spawn(Bow).set_parent(child_cycle).id();
+        let arrow = commands.spawn(Arrow).id();
+        commands.spawn(Segment{
             parent_cycle: None,
             child_cycle,
             bow,
@@ -53,8 +41,8 @@ impl Segment {
     }
 }
 
-#[derive(Component)] struct Bow(pub Entity);
-#[derive(Component)] struct Arrow(pub Entity);
+#[derive(Component)] struct Bow;
+#[derive(Component)] struct Arrow;
 
 #[derive(Resource)] pub struct Connector(pub Option<Entity>);
 
@@ -71,20 +59,6 @@ fn create_segment_mesh(
             material: materials.add(ColorMaterial::from_color(Color::WHITE)),
             ..default()
         });
-    }
-}
-
-fn position_segment_mesh(
-    mut q: Query<(Ref<Segment>,&mut Transform)>,
-) {
-    for (seg, mut transform) in q.iter_mut() {
-        if seg.is_changed() {
-            let length = Vec2::distance(seg.target, seg.source);
-            let width = f32::min(seg.source_size, seg.target_size) * 10.0;
-            transform.scale = Vec3::new(length, width, 1.0);
-            transform.translation = (0.5 * (seg.source + seg.target)).extend(2.0);
-            transform.rotation = Quat::from_rotation_z(Vec2::to_angle(seg.target - seg.source));
-        }
     }
 }
 
@@ -109,7 +83,54 @@ fn clear_orphaned_segments(
     }
 }
 
-const BOW_POSITION: Vec3 = Vec3::new(0.0,-0.53,0.0);
+const BOW_POSITION: Vec3 = Vec3::new(0.0,-1.1,0.0);
+const ARROW_POSITION: Vec3 = Vec3::new(0.0,1.6,0.0);
+const SPRITE_SCALE: f32 = 0.005;
+const LINE_WIDTH: f32 = SPRITE_SCALE * 10.0;
+
+fn position_segment_mesh(
+    q_segment: Query<(Entity, &Segment)>,
+    mut q_transform: Query<&mut Transform>,
+    q_global_transform: Query<&GlobalTransform>,
+    q_cycle: Query<&Cycle>,
+) {
+    for (segment_entity, segment) in q_segment.iter() {
+        let Ok(child_cycle) = q_cycle.get(segment.child_cycle) else {continue};
+        let parent_cycle = segment.parent_cycle.and_then(|id| q_cycle.get(id).ok());
+        let child_pos = q_global_transform.get(segment.child_cycle).unwrap();
+
+        let arrow_global = q_global_transform.get(segment.arrow).unwrap();
+        let target = arrow_global.transform_point(Vec3::new(0.0,100.0, 0.0)).truncate();
+        let target_size = parent_cycle.map_or(1.0, |c| c.scale());
+        if parent_cycle.is_some() {
+            let target_rotation = Quat::from_rotation_z(-child_cycle.phase_in_parent() * TAU);
+            *q_transform.get_mut(segment.arrow).unwrap() = Transform{
+                scale: Vec3::new(target_size * SPRITE_SCALE, target_size * SPRITE_SCALE, 1.0),
+                rotation: target_rotation,
+                translation: target_size * (target_rotation * ARROW_POSITION),
+            };
+        }
+
+        let bow_global = q_global_transform.get(segment.bow).unwrap();
+        let source = bow_global.transform_point(Vec3::new(0.0,-10.0, 0.0)).truncate();
+        let source_size = child_cycle.scale();
+        let source_rotation = Quat::from_rotation_z(Vec2::to_angle(target - child_pos.translation().truncate())) * Quat::from_rotation_z(PI/2.0);
+        *q_transform.get_mut(segment.bow).unwrap() = Transform{
+            scale: Vec3::new(source_size * SPRITE_SCALE, source_size * SPRITE_SCALE, 1.0),
+            rotation: source_rotation,
+            translation: source_size * (source_rotation * BOW_POSITION),
+        };        
+
+        let length = Vec2::distance(target, source);
+        let width = f32::min(source_size, target_size) * LINE_WIDTH;
+        *q_transform.get_mut(segment_entity).unwrap() = Transform{
+            scale: Vec3::new(length, width, 1.0),
+            rotation: Quat::from_rotation_z(Vec2::to_angle(target - source)),
+            translation: (0.5 * (source + target)).extend(2.0),
+        };
+    }
+}
+
 fn create_bow_sprite(
     mut commands: Commands,
     q: Query<Entity,(With<Bow>,Without<Sprite>)>,
@@ -118,38 +139,11 @@ fn create_bow_sprite(
     for bow in q.iter() {
         commands.entity(bow).insert(SpriteBundle {
             texture: asset_server.load("images/bow.png"),
-            transform: Transform::from_translation(BOW_POSITION).with_scale(Vec3::splat(0.0025)),
             ..default()
         });
     }
 }
 
-fn bow_with_segment(
-    mut q: Query<(&Bow,&GlobalTransform)>,
-    mut segments: Query<&mut Segment>,
-) {
-    for (bow, transform) in q.iter_mut() {
-        if let Ok(mut seg) = segments.get_mut(bow.0) {
-            seg.source = transform.transform_point(Vec3::new(0.0,-10.0, 0.0)).truncate();
-            seg.source_size = transform.affine().x_axis.length();
-        }
-    }
-}
-
-fn bow_tracks_segment(
-    mut q: Query<(&Bow, &mut Transform, &Parent),Without<Segment>>,
-    q_parent: Query<&GlobalTransform>,
-    segments: Query<&Segment>,
-) {
-    for (bow, mut transform, parent) in q.iter_mut() {
-        let Ok(seg) = segments.get(bow.0) else {continue};
-        let Ok(parent_pos) = q_parent.get(parent.get()) else {continue};
-        transform.rotation = Quat::from_rotation_z(Vec2::to_angle(seg.target - parent_pos.translation().truncate())) * Quat::from_rotation_z(PI/2.0);
-        transform.translation = transform.rotation * BOW_POSITION;
-    }
-}
-
-const ARROW_POSITION : Vec3 = Vec3::new(0.0,0.8,0.0);
 fn create_arrow_sprite(
     mut commands: Commands,
     q: Query<Entity,(With<Arrow>,Without<Sprite>)>,
@@ -158,21 +152,18 @@ fn create_arrow_sprite(
     for arrow in q.iter() {
         commands.entity(arrow).insert(SpriteBundle {
             texture: asset_server.load("images/arrow.png"),
-            transform: Transform::from_translation(ARROW_POSITION).with_scale(Vec3::splat(0.0025)),
             ..default()
         });
     }
 }
 
-fn arrow_copy_phase(
+fn arrow_sync_parent(
     mut commands: Commands,
-    mut q: Query<&Segment>,
-    mut arrows: Query<(&mut Transform, Option<&Parent>)>,
-    cycles: Query<&Cycle>,
+    mut q_segments: Query<&Segment>,
+    mut q_arrows: Query<Option<&Parent>>,
 ) {
-    for segment in q.iter_mut() {
-        let Ok(cycle) = cycles.get(segment.child_cycle) else {continue};
-        let Ok((mut transform, arrow_parent)) = arrows.get_mut(segment.arrow) else {continue};
+    for segment in q_segments.iter_mut() {
+        let Ok(arrow_parent) = q_arrows.get_mut(segment.arrow) else {continue};
         let Some(mut arrow_entity) = commands.get_entity(segment.arrow) else {continue};
         match (segment.parent_cycle, arrow_parent) {
             (Some(x), Some(y)) if x != y.get() => {
@@ -187,20 +178,6 @@ fn arrow_copy_phase(
             },
             (None, None) => return,
             _ => ()
-        }
-        transform.rotation = Quat::from_rotation_z(-cycle.phase_in_parent() * TAU);
-        transform.translation = transform.rotation * ARROW_POSITION;
-    }
-}
-
-fn arrow_with_segment(
-    q: Query<(&Arrow,&GlobalTransform)>,
-    mut segments: Query<&mut Segment>,
-) {
-    for (arrow, transform) in q.iter() {
-        if let Ok(mut seg) = segments.get_mut(arrow.0) {
-            seg.target = transform.transform_point(Vec3::new(0.0,100.0, 0.0)).truncate();
-            seg.target_size = transform.affine().x_axis.length();
         }
     }
 }
@@ -217,8 +194,11 @@ fn connector_arrow_tracks_cursor(
     // Make arrow follow the cursor
     let delta = arrow.translation.truncate() - mouse.position;
     let delta_clamped = delta.clamp_length(0.3, 0.3);
-    arrow.translation = (mouse.position + delta_clamped).extend(0.0);
-    arrow.rotation = Quat::from_rotation_z(delta.to_angle() - PI/2.0);
+    *arrow = Transform{
+        scale: Vec3::new(SPRITE_SCALE, SPRITE_SCALE, 1.0),
+        rotation: Quat::from_rotation_z(delta.to_angle() - PI/2.0),
+        translation: (mouse.position + delta_clamped).extend(0.0),
+    }
 }
 
 pub fn connector_segment<'a> (connector: &Connector,segments: &'a Query<&Segment>) -> Option<&'a Segment> {
