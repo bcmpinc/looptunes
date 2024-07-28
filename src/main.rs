@@ -415,7 +415,7 @@ fn get_index(pos: Vec2) -> usize {
 }
 
 fn draw_cycle(
-    mut q_cycles: Query<(&Cycle, &Transform, &mut Wave)>,
+    mut q_cycles: Query<(&Cycle, &mut Wave, &GlobalTransform)>,
     mut hover: ResMut<Hover>,
     windows: Query<&mut Window>,
     mouse: Res<MousePos>,
@@ -425,9 +425,9 @@ fn draw_cycle(
     if window.cursor.icon != CursorIcon::Crosshair {return}
 
     let Some(cycle_id) = hover.entity else {return};
-    let Ok((cycle, transform, mut wave)) = q_cycles.get_mut(cycle_id) else {return};
+    let Ok((cycle, mut wave, transform)) = q_cycles.get_mut(cycle_id) else {return};
     
-    let translation = transform.translation;
+    let translation = transform.affine().translation;
     let scale = cycle.scale();
     let pos = (mouse.position - translation.xy()) / scale;
     let a = hover.position;

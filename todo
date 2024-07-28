@@ -11,9 +11,11 @@ x Modify wave
 Bug Fixing:
 - When changing a connection it does not drop its parent.
 - Playing animation not in sync with audio.
-- Drawing on nodes that are children fails.
+x Drawing on nodes that are children fails.
 
 Stretches:
+- Pause on disconnect
+- Copy play state upon connect
 x Copy circles?
 x Delete circles?
 - Clone entire trees?
