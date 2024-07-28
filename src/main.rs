@@ -67,7 +67,7 @@ fn main() {
         .add_systems(Update, (colorize, add_circle))
         .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
         .add_systems(PostUpdate, play_everything)
-        .add_systems(PostUpdate, track_hover)
+        .add_systems(SpawnScene, track_hover)
         .run();
 }
 
