@@ -354,39 +354,38 @@ fn clone_circle(
     hover.entity = Some(entity.id());
 }
 
-fn clear_children_in_place(
-    commands: &mut Commands,
-    hover: &Res<Hover>,
-    q_children: &Query<&Children>,
-    parent: Entity,
-) {
-    if let Ok(children) = q_children.get(parent) {
-        for child in children {
-            if let Some(mut c) = commands.get_entity(*child) {
-                if *child == hover.highlight {
-                    c.remove_parent();
-                } else {
-                    c.remove_parent_in_place();
-                    c.remove::<Playing>();
-                }
-            }
-        }
-    }
-}
-
 fn delete_circle(
     mut commands: Commands,
     mut hover: ResMut<Hover>,
     connector: Res<Connector>,
-    q_children: Query<&Children>,
+    q_children: Query<&ChildCycles>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Delete) {return}
     if connector.0 != None {return}
     let Some(entity) = hover.entity else {return};
     hover.entity = None;
-    clear_children_in_place(&mut commands, &hover.into(), &q_children, entity);
-    commands.try_despawn(entity);
+    if is_shift(&keyboard) {
+        let mut stack: Vec<Entity> = Vec::new();
+        stack.push(entity);
+        while let Some(node) = stack.pop() {
+            if let Ok(children) = q_children.get(node) {
+                for &child in children.0.iter() {
+                    stack.push(child);
+                }
+            }
+            commands.try_despawn(node);
+        }
+    } else {
+        if let Ok(children) = q_children.get(entity) {
+            for &child in children.0.iter() {
+                if let Some(mut c) = commands.get_entity(child) {
+                    c.remove_parent_in_place().remove::<Playing>();
+                }
+            }
+        }
+        commands.try_despawn(entity);
+    }
 }
 
 fn get_index(pos: Vec2) -> usize {

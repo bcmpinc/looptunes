@@ -8,7 +8,7 @@ pub trait CommandsExt<T> {
 impl CommandsExt<Entity> for Commands<'_,'_> {
     fn try_despawn(&mut self, id: Entity) {
         if let Some(mut c) = self.get_entity(id) {
-            c.despawn();
+            c.remove_parent().clear_children().despawn();
         }
     }
 }
