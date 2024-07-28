@@ -10,9 +10,8 @@ pub struct ConnectorPlugin;
 impl Plugin for ConnectorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreUpdate, arrow_sync_parent);
-        app.add_systems(Update, connector_arrow_tracks_cursor);
+        app.add_systems(Update, (connector_arrow_tracks_cursor, position_segment_mesh).chain());
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
-        app.add_systems(PostUpdate, position_segment_mesh);
         app.add_systems(Last, clear_orphaned_segments);
         app.insert_resource(Connector(None));
     }
@@ -57,6 +56,7 @@ fn create_segment_mesh(
         commands.entity(seg).insert(ColorMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(mesh)),
             material: materials.add(ColorMaterial::from_color(Color::WHITE)),
+            transform: Transform{scale:Vec3::splat(0.0), ..default()},
             ..default()
         });
     }
@@ -99,6 +99,7 @@ fn position_segment_mesh(
         let parent_cycle = segment.parent_cycle.and_then(|id| q_cycle.get(id).ok());
         let child_pos = q_global_transform.get(segment.child_cycle).unwrap();
 
+        // Position the arrow (as target)
         let arrow_global = q_global_transform.get(segment.arrow).unwrap();
         let target = arrow_global.transform_point(Vec3::new(0.0,100.0, 0.0)).truncate();
         let target_size = parent_cycle.map_or(1.0, |c| c.scale());
@@ -111,6 +112,7 @@ fn position_segment_mesh(
             };
         }
 
+        // Position the bow (as source)
         let bow_global = q_global_transform.get(segment.bow).unwrap();
         let source = bow_global.transform_point(Vec3::new(0.0,-10.0, 0.0)).truncate();
         let source_size = child_cycle.scale();
@@ -121,6 +123,10 @@ fn position_segment_mesh(
             translation: source_size * (source_rotation * BOW_POSITION),
         };        
 
+        // Skip positioning connector if scale of bow and arrow has not yet propagated.
+        if arrow_global.affine().x_axis.length_squared() < f32::EPSILON || bow_global.affine().x_axis.length_squared() < f32::EPSILON {continue}
+
+        // Position connector
         let length = Vec2::distance(target, source);
         let width = f32::min(source_size, target_size) * LINE_WIDTH;
         *q_transform.get_mut(segment_entity).unwrap() = Transform{
@@ -139,6 +145,7 @@ fn create_bow_sprite(
     for bow in q.iter() {
         commands.entity(bow).insert(SpriteBundle {
             texture: asset_server.load("images/bow.png"),
+            transform: Transform{scale:Vec3::splat(0.0), ..default()},
             ..default()
         });
     }
@@ -152,6 +159,7 @@ fn create_arrow_sprite(
     for arrow in q.iter() {
         commands.entity(arrow).insert(SpriteBundle {
             texture: asset_server.load("images/arrow.png"),
+            transform: Transform{scale:Vec3::splat(0.0), ..default()},
             ..default()
         });
     }
