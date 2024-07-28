@@ -553,7 +553,7 @@ fn play_everything(
     let time: Vec<f64> = backend.time_chunk();
     let mut result: Vec<f32> = [0.0;1024].into();
     while let Some(node) = stack.pop() {
-        let (cycle, wave, option_children) = q_cycles.get(node.entity).unwrap();
+        let Ok((cycle, wave, option_children)) = q_cycles.get(node.entity) else {continue};
         if let Some(children) = option_children {
             // Recurse into child nodes
             for &child in children.0.iter() {
