@@ -10,6 +10,7 @@ x Modify wave
 Stretches:
 x Copy circles?
 x Delete circles?
-- Don't delete entire circle trees
+- Delete entire circle trees?
+- Clone entire trees?
 - Persistance?
 - Undo?
