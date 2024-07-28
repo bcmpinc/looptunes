@@ -561,7 +561,7 @@ fn play_everything(
             let samples 
                 = synthesize(&cycle, &wave, time.iter(), 0.0)
                 .zip(node.volume.iter())
-                .map(|(s,v)| s*v);
+                .map(|(s,v)| (s - wave.average)*v);
 
             result
                 .iter_mut()

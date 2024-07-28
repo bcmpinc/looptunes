@@ -12,6 +12,8 @@ Bug Fixing:
 x When changing a connection it does not drop its parent.
 x Playing animation not in sync with audio.
 x Drawing on nodes that are children fails.
+x Average handling
+- Connector flashing
 
 Stretches:
 x Pause on disconnect
