@@ -10,7 +10,7 @@ use bevy::sprite::{Anchor, Material2d, Material2dKey, Material2dPlugin, Material
 
 use rand::{thread_rng, Rng};
 
-use crate::{CommandsExt, Hover, LoopTunesBackend};
+use crate::{is_shift, CommandsExt, Hover, LoopTunesBackend};
 
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
@@ -178,7 +178,7 @@ fn toggle_play(
     };
     set_state(hover_entity);
 
-    if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+    if is_shift(&keyboard) {
         for descendant in q_children.iter_descendants(hover_entity) {
             set_state(descendant);
         }

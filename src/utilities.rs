@@ -1,4 +1,5 @@
-use bevy::prelude::{Commands, Entity};
+use bevy::input::ButtonInput;
+use bevy::prelude::*;
 
 pub trait CommandsExt<T> {
     fn try_despawn(&mut self, id: T);
@@ -26,4 +27,12 @@ impl<Err> CommandsExt<Result<Entity,Err>> for Commands<'_,'_> {
             self.try_despawn(entity);
         };
     }
+}
+
+pub fn is_ctrl(keyboard: &ButtonInput<KeyCode>) -> bool {
+    keyboard.pressed(KeyCode::ControlLeft)  || keyboard.pressed(KeyCode::ControlRight)
+}
+
+pub fn is_shift(keyboard: &ButtonInput<KeyCode>) -> bool {
+    keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
 }

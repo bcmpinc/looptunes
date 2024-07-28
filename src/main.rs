@@ -24,13 +24,6 @@ mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
 mod utilities; use utilities::*;
 
-fn is_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
-    keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
-} 
-fn is_not_shift(keyboard: Res<ButtonInput<KeyCode>>) -> bool {
-    !is_shift(keyboard)
-}
-
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
@@ -61,11 +54,11 @@ fn main() {
         .add_systems(Update, (
             hover_cycle, 
             connect_create,
-            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(is_shift)),
+            (delete_circle, clone_circle, drag_cycle, draw_cycle, connect_cycle, scroll_cycle.run_if(|keyboard:Res<ButtonInput<KeyCode>>|is_shift(&keyboard))),
             connect_drop
         ).chain())
         .add_systems(Update, (colorize, add_circle))
-        .configure_sets(Update, (ZoomSystem).run_if(is_not_shift))
+        .configure_sets(Update, (ZoomSystem).run_if(|keyboard:Res<ButtonInput<KeyCode>>|!is_shift(&keyboard)))
         .add_systems(PostUpdate, play_everything)
         .add_systems(SpawnScene, track_hover)
         .run();
@@ -184,9 +177,9 @@ fn hover_cycle(
     let Some((entity, position, draw)) = nearest_circle(&cycles, mouse) else {return};
     hover.entity = Some(entity);
     hover.position = position;
-    if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+    if is_ctrl(&keyboard) {
         window.cursor.icon = CursorIcon::Copy;
-    } else if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+    } else if is_shift(&keyboard) {
         window.cursor.icon = CursorIcon::Pointer;
     } else if draw {
         window.cursor.icon = CursorIcon::Crosshair;
@@ -285,7 +278,7 @@ fn connect_cycle(
             segment.parent_cycle = Some(entity);
             let (_, mut cc, _) = cycles.get_mut(cc_id).unwrap();
             let mut phase = 1.25 - position.to_angle() / TAU;
-            if is_shift(keyboard) {
+            if is_shift(&keyboard) {
                 phase = (16.0 * phase).round() / 16.0;
             }
             cc.phase = phase % 1.0;
@@ -631,7 +624,7 @@ fn add_circle(
         _ => return
     };
 
-    let frequency = if is_shift(keyboard) {
+    let frequency = if is_shift(&keyboard) {
         Cycle::DEFAULT_FREQUENCY
     } else {
         Cycle::NOTE_A4
