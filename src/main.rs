@@ -14,7 +14,9 @@ use bevy::window::{CursorIcon, PresentMode, Window, WindowTheme};
 use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 
 use rand::{thread_rng, Rng};
+use smallvec::SmallVec;
 
+// Modules
 mod connector; use connector::*;
 mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
@@ -55,6 +57,7 @@ fn main() {
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)
+        .add_systems(PreUpdate, child_cycles)
         .add_systems(Update, (
             hover_cycle, 
             connect_create,
@@ -492,31 +495,80 @@ fn synthesize<'a>(cycle: &'a Cycle, wave: &'a Wave, time: impl Iterator<Item = f
     })
 }
 
+#[derive(Component)]
+struct ChildCycles(SmallVec<[Entity; 8]>);
+
+fn child_cycles(
+    mut commands: Commands,
+    q: Query<(Entity, Option<Ref<Children>>), With<Cycle>>,
+    mut q_cc: Query<&mut ChildCycles, With<Cycle>>,
+) {
+    for (entity, children) in q.iter() {
+        let childcycles = q_cc.get_mut(entity).ok();
+        if let Some(childs) = children {
+            if !childs.is_changed() {continue}
+
+            let mut res = SmallVec::<[Entity; 8]>::new();
+            for &e in childs.iter() {
+                if q.get(e).is_ok() {
+                    res.push(e);
+                }
+            }
+            if !res.is_empty() {
+                let component = ChildCycles(res);
+                if let Some(mut cc) = childcycles {
+                    *cc = component;
+                } else {
+                    commands.entity(entity).insert(component);
+                }
+                continue;
+            }
+        };
+
+        if childcycles.is_some() {
+            commands.entity(entity).remove::<ChildCycles>();
+        }
+    }
+}
+
 fn play_everything(
     q_cycles: Query<(&Cycle,&Wave), With<Playing>>,
     q_roots: Query<Entity, (Without<Parent>, With<Playing>)>,
-    q_children: Query<&Children, (With<Cycle>, With<Playing>)>,
+    q_children: Query<&ChildCycles, With<Playing>>,
     backend: Res<LoopTunesBackend>,
     mut pos: ResMut<PlayPosition>,
 ) {
+    // If nothing is playing reset playback.
     if q_roots.is_empty() {
-        // If nothing is playing reset playback.
         pos.0 = 0;
         return
     }
 
+    // Prepare a stack of nodes.
+    struct Node {
+        entity: Entity,
+        volume: Vec<f32>,
+    };
+    let mut stack: Vec<Node> = Vec::with_capacity(32);
+    for entity in q_roots.iter() {
+        let volume = [0.0;1024].into();
+        stack.push(Node{entity, volume});
+    }
+
+    // Collect the samples from each node
     let time: Vec<f64> = (0..PLAY_CHUNK as u32).map(|i| (pos.0 + i) as f64 / 48000.0).collect();
     let result: Vec<f32> = [0.0;1024].into();
-    
-    for root in q_roots.iter() {
-
+    while let Some(node) = stack.pop() {
+        // if let Ok(children) = q_children.get(entity)
 
     }
 
+    // Push samples to the audio backend
     for sample in result.iter() {
         _ = backend.producer.send(sample * 0.2);
     }
 
+    // Update playback position
     pos.0 += PLAY_CHUNK as u32;
     pos.0 %= 48000 * 256 * 3;
 }
