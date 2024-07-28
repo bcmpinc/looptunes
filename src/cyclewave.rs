@@ -12,19 +12,19 @@ use rand::{thread_rng, Rng};
 
 use crate::CommandsExt;
 
-fn never() -> bool {false}
-
 pub struct CycleWavePlugin;
 impl Plugin for CycleWavePlugin {
     fn build(&self, app: &mut App) {
         app 
             .add_plugins(Material2dPlugin::<WaveMaterial>::default())
             .add_systems(SpawnScene, (update_textures, create_children).chain())
-            .add_systems(Update, (update_frequency, rotate_cyclewaves.run_if(never)).chain())
+            .add_systems(Update, (update_frequency, rotate_cyclewaves).chain())
             .add_systems(PostUpdate, clean_orphans)
         ;
     }
 }
+
+#[derive(Component,Clone)] struct Playing;
 
 /**
  * Component that describes an audio cycle. 
@@ -60,7 +60,7 @@ impl Cycle {
     pub fn frequency_name(&self) -> &'static str {
         Self::FREQUENCY_LIST[self.frequency as usize].0
     }
-    pub fn size(&self) -> f32 {
+    pub fn scale(&self) -> f32 {
         f32::max(4. / self.frequency().sqrt() as f32, 1.)
     }
     #[allow(unused)]
@@ -84,6 +84,7 @@ impl Default for Cycle {
 
 #[derive(Component)] struct WaveSubComponent;
 
+const TEXT_SCALE: f32 = 0.001;
 fn create_children(
     mut commands: Commands,
     q: Query<(Entity,Ref<Cycle>,&Wave)>,
@@ -103,6 +104,7 @@ fn create_children(
                     },
                     WaveSubComponent,
                 ));
+                let scale_text = cycle.scale() * TEXT_SCALE;
                 parent.spawn((
                     Text2dBundle{
                         text: Text{
@@ -118,7 +120,7 @@ fn create_children(
                             ..default()
                         },
                         text_anchor: Anchor::Center,
-                        transform: Transform::from_scale(Vec3::new(0.001,0.001,1.0)),
+                        transform: Transform::from_scale(Vec3::new(scale_text,scale_text,1.0)),
                         ..default()
                     },
                     WaveSubComponent,
@@ -141,20 +143,15 @@ fn clean_orphans(
 }
 
 fn update_frequency(
-    mut q_cycle: Query<(Ref<Cycle>, &mut Transform)>,
-    mut q_text: Query<(&mut Text, &Parent)>,
+    mut q_cycle: Query<Ref<Cycle>>,
+    mut q_text: Query<(&mut Text, &mut Transform, &Parent)>,
 ) {
-    for (cycle, mut transform) in q_cycle.iter_mut() {
-        if cycle.is_changed() {
-            let scale = cycle.size();
-            transform.scale = Vec3::new(scale, scale, 1.0);
-        }
-    }
-
-    for (mut text, parent) in q_text.iter_mut() {
-        let Ok((cycle, _)) = q_cycle.get_mut(parent.get()) else {continue};
+    for (mut text, mut transform, parent) in q_text.iter_mut() {
+        let Ok(cycle) = q_cycle.get_mut(parent.get()) else {continue};
         if cycle.is_changed() {
             text.sections[0].value = cycle.frequency_name().into();
+            let scale = cycle.scale() * TEXT_SCALE;
+            transform.scale = Vec3::new(scale, scale, 1.0);
         }
     }
 }
@@ -164,11 +161,14 @@ pub struct WaveCycleImage;
 
 fn rotate_cyclewaves(
     mut q_child: Query<(&Parent, &mut Transform), With<WaveCycleImage>>,
-    q_parent: Query<&Cycle>,
+    q_parent: Query<(&Cycle, Option<&Playing>)>,
     time: Res<Time>,
 ) {
     for (parent, mut transform) in q_child.iter_mut() {
-        let frequency = q_parent.get(parent.get()).unwrap().frequency() as f32;
+        let Ok((cycle, playing)) = q_parent.get(parent.get()) else {continue};
+        let frequency = if playing.is_none() {0.0} else {cycle.frequency() as f32};
+        let scale = cycle.scale();
+        transform.scale = Vec3::new(scale, scale, 1.0);
         transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * time.elapsed_seconds() * frequency);
     }
 }
