@@ -310,6 +310,7 @@ fn connect_drop(
         if !has_parent(&parents, parent, cc_id) {
             //println!("attached to {:?}", parent);
             assert!(cc_id != parent);
+            assert!(segment.parent_cycle != None);
             commands.entity(cc_id).set_parent_in_place(parent);
             connector.0 = None;
             return;

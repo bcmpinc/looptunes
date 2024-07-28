@@ -10,9 +10,9 @@ pub struct ConnectorPlugin;
 impl Plugin for ConnectorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(SpawnScene, (create_segment_mesh, create_bow_sprite, create_arrow_sprite));
+        app.add_systems(PreUpdate, arrow_copy_phase);
         app.add_systems(Update, (bow_tracks_segment, connector_arrow_tracks_cursor));
         app.add_systems(PostUpdate, (
-            arrow_copy_phase,
             (bow_with_segment,arrow_with_segment),
             position_segment_mesh,
         ).chain());
