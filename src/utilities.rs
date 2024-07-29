@@ -44,3 +44,9 @@ macro_rules! println {
 }
 #[cfg(not(target_arch = "wasm32"))]
 pub use std::println;
+
+pub fn soft_signum(val: f32) -> f32 {
+    if val < -0.1 {return -1.0;}
+    if val >  0.1 {return  1.0;}
+    return 0.0;
+}

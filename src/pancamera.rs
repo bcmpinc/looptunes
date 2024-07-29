@@ -47,10 +47,10 @@ fn camera_zoom(
     let mut offset = transform.translation - Vec3::new(cursor.position.x, cursor.position.y, 0.0);
     for event in scroll.read() {
         transform.translation -= offset;
-        if event.y < 0.0 {
+        if event.y < -0.1 {
             transform.scale /= ZOOM_SENSITIVITY;
             offset /= ZOOM_SENSITIVITY;
-        } else {
+        } else if event.y > 0.1 {
             transform.scale *= ZOOM_SENSITIVITY;
             offset *= ZOOM_SENSITIVITY;
         }

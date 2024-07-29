@@ -473,7 +473,7 @@ fn scroll_cycle(
     let Some(entity) = hover.entity else {return};
     let Ok(mut cycle) = q_cycles.get_mut(entity) else {return};
     for event in scroll.read() {
-        cycle.change_frequency(-event.y.signum() as i32);
+        cycle.change_frequency(-(soft_signum(event.y) + 12.0 * soft_signum(event.x)) as i32);
     }
 }
 
