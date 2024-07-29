@@ -1,5 +1,4 @@
 # Loop-Tunes
-
 <p align="center">
 "<em>Draw your own kind of music.<br/>Paint your own special song!</em>"
 </p>
@@ -8,7 +7,6 @@ Loop-tunes is a chip-tune music creation sandbox game. It works by compositing m
 It was created during [bevy-jam 5](https://itch.io/jam/bevy-jam-5) with the theme *cycles*.
 
 This is my first real bevy project and to avoid complicated things like UI, it has no UI. Please check the controls below.
-
 
 ### How to start
 - Click on the 2m8s circle.
@@ -74,15 +72,11 @@ Without it, I would not have been able to write things like:
 - rand, smallvec
 
 ## License
-
 Licensed under either of
 
-* Apache License, Version 2.0
-   ([LICENSE-APACHE-2.0](LICENSE-Apache-2.0) or <http://www.apache.org/licenses/LICENSE-2.0>)
-* MIT License
-   ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
-* CC0-1.0 License
-   ([LICENSE-CC0-1.0](LICENSE-CC0-1.0) or <https://creativecommons.org/publicdomain/zero/1.0/legalcode>)
+* [Apache License, Version 2.0](LICENSE-Apache-2.0).
+* [MIT License](LICENSE-MIT).
+* [CC0-1.0 License](LICENSE-CC0-1.0).
 
 at your option.
 
