@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{println, ChildCycles, Clipboard, ClipboardPlugin, Cycle, CycleWaveBundle, Hover, MousePos, Wave};
+use crate::{println, ChildCycles, Clipboard, ClipboardPlugin, Cycle, CycleWaveBundle, Hover, MousePos, Segment, Wave};
 
 pub struct ArchivingPlugin;
 
@@ -123,64 +123,15 @@ fn paste_tree(
                     transform: Transform::from_translation(if root {mouse.position} else {node.position}.extend(0.0)),
                     ..default()
                 });
+                let id = ec.id();
+                entities.push(id);
                 if !root {
-                    ec.set_parent(entities[node.parent as usize]);
+                    let parent = entities[node.parent as usize];
+                    ec.set_parent(parent);
+                    Segment::spawn(&mut commands, id, Some(parent));
                 }
-                entities.push(ec.id());
             }
         }
     }
     
 }
-
-/*
-fn clone_cycle<'a>(commands: &'a mut Commands, cycle: &Cycle, wave: &Wave, transform: &Transform) -> EntityCommands<'a>{
-    commands.spawn(CycleWaveBundle{
-        cycle: cycle.clone(),
-        wave: Wave{
-            pattern: wave.pattern.clone(),
-            ..default()
-        },
-        transform: transform.clone(),
-        ..default()
-    })
-}
-
-fn clone_circle(
-    mut commands: Commands,
-    q_cycles: Query<(&Cycle, &Wave, &Transform)>,
-    q_children: Query<&ChildCycles>,
-    mouse: Res<MousePos>,
-    mut hover: ResMut<Hover>,
-    mut windows: Query<&mut Window>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    if !hover.pressed {return}
-    let Some(old_cycle) = hover.entity else {return};
-    
-    let mut window = windows.single_mut();
-    if window.cursor.icon != CursorIcon::Copy {return}
-    window.cursor.icon = CursorIcon::Grabbing; 
-    
-    let Ok((cycle, wave, _)) = q_cycles.get(old_cycle) else {return};
-    let transform = &Transform::from_translation(mouse.position.extend(0.0));
-    let new_cycle = clone_cycle(&mut commands, cycle, wave, transform).id();
-    hover.entity = Some(new_cycle);
-    
-    if is_shift(&keyboard) {
-        let mut stack: Vec<(Entity,Entity)> = Vec::new();
-        stack.push((old_cycle, new_cycle));
-        while let Some((old_node, new_node)) = stack.pop() {
-            if let Ok(children) = q_children.get(old_node) {
-                for &old_child in children.0.iter() {
-                    let Ok((cycle, wave, transform)) = q_cycles.get(old_child) else {continue};
-                    let new_child = clone_cycle(&mut commands, cycle, wave, transform).set_parent(new_node).id();
-                    Segment::spawn(&mut commands, new_child, Some(new_node));
-                    stack.push((old_child, new_child));
-                }
-            }
-        }        
-    }
-}
-
-*/
