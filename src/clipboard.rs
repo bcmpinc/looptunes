@@ -1,14 +1,17 @@
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemId, prelude::*};
 
 #[cfg(not(target_family="wasm"))] pub use self::native::*;
 #[cfg(target_family="wasm")] pub use self::wasm::*;
 
-pub trait ClipboardResource : Resource {
-    fn try_paste(&mut self) -> Option<String>;
-    fn try_copy(&mut self, callback: impl FnOnce() -> String) -> Option<()>;
+#[derive(Resource)]
+pub struct Clipboard {
+    pub copy: SystemId<(),String>,
+    pub paste: SystemId<String>,
 }
 
+
 mod wasm {
+    use bevy::ecs::system::SystemId;
     use bevy::prelude::*;
     use crossbeam_channel::{bounded, Receiver};
     use web_sys::ClipboardEvent;
@@ -16,6 +19,7 @@ mod wasm {
     use web_sys::wasm_bindgen::prelude::Closure;
 
     use super::ClipboardResource;
+    use crate::println;
 
     #[derive(Resource)] pub struct Clipboard {
         copy_queue: Receiver<ClipboardEvent>,
@@ -30,7 +34,6 @@ mod wasm {
             let event = self.paste_queue.try_recv().ok()?;
             let clipboard_data = event.clipboard_data()?;
             let pasted_text = clipboard_data.get_data("text/plain").ok()?;
-            event.prevent_default();
             Some(pasted_text)
         }
 
@@ -39,14 +42,22 @@ mod wasm {
             let clipboard_data = event.clipboard_data()?;
             let copied_text = callback();
             clipboard_data.set_data("text/plain", &copied_text).ok()?;
-            event.prevent_default();
             Some(())
         }
     }
 
+    fn test(clipboard: Res<'_, Clipboard>) -> String {"test".into()}
+    fn test2(pasted: In<String>, clipboard: Res<'_, Clipboard>) {}
+
     pub struct ClipboardPlugin;
     impl Plugin for ClipboardPlugin {
         fn build(&self, app: &mut App) {
+            let x = app.register_system(test);
+            let x = app.register_system(test2);
+            let world = unsafe{app.world_mut().as_unsafe_world_cell().world_mut()};
+            //app.world_mut();
+            let test: String = "test".into();
+            world.run_system_with_input(x, test);
 
             // Generate message passing channels.            
             let (copy_tx, copy_queue ) = bounded::<ClipboardEvent>(1);
@@ -56,6 +67,8 @@ mod wasm {
 
             // Set up a copy event listener.
             let copy_closure = Closure::<dyn FnMut(_)>::new(move |event: ClipboardEvent| {
+                println!("Copying event");
+                event.prevent_default();
                 _ = copy_tx.try_send(event);
             });
             _ = window.add_event_listener_with_callback("copy", copy_closure.as_ref().unchecked_ref());
@@ -63,6 +76,8 @@ mod wasm {
 
             // Set up a paste event listener.
             let paste_closure = Closure::<dyn FnMut(_)>::new(move |event: ClipboardEvent| {
+                println!("Pasting event");
+                event.prevent_default();
                 _ = paste_tx.try_send(event);
             });
             _ = window.add_event_listener_with_callback("paste", paste_closure.as_ref().unchecked_ref());
@@ -73,67 +88,70 @@ mod wasm {
                 copy_queue,
                 paste_queue,
             });
+
+            app.add_systems(First, |
+                keyboard: Res<ButtonInput<KeyCode>>,
+                clipboard: ResMut<Clipboard>,
+            | {
+                if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+                    if keyboard.just_pressed(KeyCode::KeyC) {
+                        println!("Copying shortcut");
+                    }
+                    if keyboard.just_pressed(KeyCode::KeyV) {
+                        println!("Pasting shortcut");
+                    }
+                }
+            });
         }
     }
 }
 
 mod native {
-    use std::sync::atomic::{AtomicBool, Ordering};
-
     use bevy::prelude::*;
     use copypasta::*;
 
-    use super::ClipboardResource;
+    use super::Clipboard;
 
-    fn is_ctrl(keyboard: &ButtonInput<KeyCode>) -> bool {
-        keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight)
-    }
-    
-    #[derive(Resource)] pub struct Clipboard {
+    #[derive(Resource)] struct ClipboardInternal {
         ctx: ClipboardContext,
-        request_copy: AtomicBool,
-        request_paste: AtomicBool,
-    }
-
-    impl ClipboardResource for Clipboard {
-        fn try_paste(&mut self) -> Option<String> {
-            if self.request_paste.swap(false, Ordering::Relaxed) {
-                self.ctx.get_contents().ok()
-            } else {
-                None
-            }
-        }
-
-        fn try_copy(&mut self, callback: impl FnOnce() -> String) -> Option<()>{
-            if self.request_copy.swap(false, Ordering::Relaxed) {
-                self.ctx.set_contents(callback()).ok()
-            } else {
-                None
-            }
-        }
     }
 
     pub struct ClipboardPlugin;
     impl Plugin for ClipboardPlugin {
         fn build(&self, app: &mut App) {
-            app.insert_resource(Clipboard {
-                ctx: ClipboardContext::new().unwrap(),
-                request_copy: AtomicBool::new(false),
-                request_paste: AtomicBool::new(false),
-            });
-            app.add_systems(First, |
-                keyboard: Res<ButtonInput<KeyCode>>,
-                clipboard: ResMut<Clipboard>,
-            | {
-                if is_ctrl(&keyboard) {
-                    if keyboard.just_pressed(KeyCode::KeyC) {
-                        clipboard.request_copy.store(true, Ordering::Relaxed);
-                    }
-                    if keyboard.just_pressed(KeyCode::KeyV) {
-                        clipboard.request_paste.store(true, Ordering::Relaxed);
-                    }
-                }
-            });
+            app
+                .insert_resource(ClipboardInternal {
+                    ctx: ClipboardContext::new().unwrap()
+                })
+                .add_systems(First, key_handler);
         }
+    }
+
+    fn key_handler(
+        mut commands: Commands,
+        keyboard: Res<ButtonInput<KeyCode>>,
+    ) {
+        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+            if keyboard.just_pressed(KeyCode::KeyC) {
+                commands.add(copy_command);
+            }
+            if keyboard.just_pressed(KeyCode::KeyV) {
+                commands.add(paste_command);
+            }
+        }
+    }
+
+    fn copy_command(world: &mut World) {
+        let Some(clipboard) = world.get_resource::<Clipboard>() else {return};
+        let mut internal = world.get_resource_mut::<ClipboardInternal>().unwrap();
+        let Ok(copy_text) = world.run_system(clipboard.copy) else {return};
+        internal.ctx.set_contents(copy_text);
+    }
+
+    fn paste_command(world: &mut World) {
+        let Some(clipboard) = world.get_resource::<Clipboard>() else {return};
+        let mut internal = world.get_resource_mut::<ClipboardInternal>().unwrap();
+        let paste_text = internal.ctx.get_contents() else {return};
+        world.run_system_with_input(clipboard.paste, paste_text);
     }
 }
