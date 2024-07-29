@@ -56,12 +56,15 @@ This is my first real bevy project and to avoid complicated things like UI, it h
 ## Credits
 The very few assets this game has, have been made by me during the jam.
 
-ChatGPT has been invaluable for teaching me how to write code for bevy and where to look in the documentation.
-Without it, I would not have been able to write things like:
+The bevy discord, [the unofficial bevy cheatbook​](https://bevy-cheatbook.github.io/) 
+and ChatGPT have been invaluable resources 
+for teaching me how to write code for bevy. Without these, 
+I would not have been able to write loop-tunes. In particular
 
 - the [custom audio backend](src/looptunes.rs) for playing procedrual music; and
 - the [clipboard plugin](src/clipboard.rs) for saving and loading creations.
 
+would have been impossible.
 
 ### Used libraries:
 - bevy v0.14 (obviously)
