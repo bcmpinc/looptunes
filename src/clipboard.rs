@@ -15,8 +15,6 @@ pub struct Clipboard {
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::wasm_bindgen::prelude::Closure;
 
-    use crate::println;
-
     use super::Clipboard;
 
     // Here be dragons! 
