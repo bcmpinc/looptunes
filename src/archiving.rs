@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{Clipboard, ClipboardResource};
+use crate::{println, Clipboard, ClipboardResource};
 
 pub struct ArchivingPlugin;
 

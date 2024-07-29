@@ -306,7 +306,7 @@ fn connect_drop(
 ) {
     if hover.pressed {return}
     let Some(segment) = connector_segment(&connector, &segments) else {return};
-    //print!("Dropping connector: ");
+    //println!("Dropping connector: ");
     
     let cc_id = segment.child_cycle;
     if let Some(parent) = hover.entity {

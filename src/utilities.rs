@@ -36,3 +36,11 @@ pub fn is_ctrl(keyboard: &ButtonInput<KeyCode>) -> bool {
 pub fn is_shift(keyboard: &ButtonInput<KeyCode>) -> bool {
     keyboard.pressed(KeyCode::ShiftLeft)  || keyboard.pressed(KeyCode::ShiftRight)
 }
+
+#[cfg(target_family="wasm")]
+#[macro_export]
+macro_rules! println {
+    ($($t:tt)*) => (web_sys::console::log_1(&format!($($t)*).into()))
+}
+#[cfg(not(target_arch = "wasm32"))]
+pub use std::println;
