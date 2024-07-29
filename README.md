@@ -17,12 +17,13 @@ Copy & paste functionality is provided by a [clipboard plugin](src/clipboard.rs)
 - Keep the mouse above it.
 - Press *shift + space* to start playing.
 - Press that again to make it stop.
+- Press *shift + delete* to remove it all. 
 - Check the controls below on how to draw your own music.
 
 ### How to share
 - Hover above your song's root node and press *ctrl + C* to copy your creation.
 - Share it in the comments below.
-- Other people can copy it and paste it with *ctrl + V* into the game.
+- Other people can copy that and paste it into the game with *ctrl + V*. 
 
 ### Available on:
 
@@ -56,6 +57,14 @@ Copy & paste functionality is provided by a [clipboard plugin](src/clipboard.rs)
 **Connectivity**
 - Add/change connection by holding *shift* and dragging from one circle to another.
 - While dragging a new connection, hold *shift* for angle snapping, or release *shift* for free positioning.
+
+## Libraries used
+- bevy v0.14 (obviously)
+- bevy_embedded_assets
+- rodio & crossbeam-channel (for audio playback)
+- copypasta, web-sys (for clipboard access)
+- serde, bitcode, zstd & base64 (for copy & paste functionality)
+- rand, smallvec
 
 ## License
 
