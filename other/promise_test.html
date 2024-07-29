@@ -10,13 +10,36 @@
     <footer></footer>
   </body>
   <script>
-  document.addEventListener("copy", function(event) {
-    event.clipboardData.setData("text", "this is a test");
+  let copy={}
+  let paste={}
+  window.setInterval(function() {
+    console.log("tick");
+    if (copy.result) {
+      let t = copy.result;
+      copy.result = undefined;
+      t("this is a test")
+    }
+    if (paste.result) {
+      let t = paste.result;
+      paste.result = undefined;
+      document.body.textContent = paste.text;
+      t()
+    }
+  },100);
+
+  window.addEventListener("copy", async function(event) {
+    console.log("copy start");
     event.preventDefault();
+    let result = await new Promise(function(result,reject){copy.result = result;})
+    event.clipboardData.setData("text", result);
+    console.log("copy end");
   });
-  document.addEventListener("paste", function(event) {
-    document.body.textContent = event.clipboardData.getData("text");
+  window.addEventListener("paste", async function(event) {
+    console.log("paste start");
     event.preventDefault();
+    paste.text = event.clipboardData.getData("text");
+    await new Promise(function(result,reject){paste.result = result;})
+    console.log("paste end");
   });
   </script>
 </html>

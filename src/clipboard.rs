@@ -8,8 +8,9 @@ pub struct Clipboard {
 
 #[cfg(target_family="wasm")] pub use self::wasm::*;
 #[cfg(target_family="wasm")] mod wasm {
+    use std::ptr::null_mut;
+
     use bevy::prelude::*;
-    use crossbeam_channel::{bounded, Receiver};
     use web_sys::ClipboardEvent;
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::wasm_bindgen::prelude::Closure;
@@ -18,25 +19,25 @@ pub struct Clipboard {
 
     use super::Clipboard;
 
-    pub struct ClipboardInternal {
-        copy_queue: Receiver<ClipboardEvent>,
-        paste_queue: Receiver<ClipboardEvent>,
-    }
+    // Here be dragons! 
+    static mut WORLD_ALIAS: *mut World = null_mut();
 
     pub struct ClipboardPlugin;
     impl Plugin for ClipboardPlugin {
         fn build(&self, app: &mut App) {
-            // Generate message passing channels.            
-            let (copy_tx, copy_queue ) = bounded::<ClipboardEvent>(1);
-            let (paste_tx,paste_queue) = bounded::<ClipboardEvent>(1);
-            
             let window = web_sys::window().unwrap();
 
             // Set up a copy event listener.
             let copy_closure = Closure::<dyn FnMut(_)>::new(move |event: ClipboardEvent| {
                 println!("Copying event");
+                let world = unsafe{&mut *WORLD_ALIAS};
+
+                let clipboard = world.get_resource::<Clipboard>().unwrap();
+                let copy_text = world.run_system(clipboard.copy).unwrap();
+                let clipboard_data = event.clipboard_data().unwrap();
+                _ = clipboard_data.set_data("text", &copy_text);
+
                 event.prevent_default();
-                _ = copy_tx.try_send(event);
             });
             _ = window.add_event_listener_with_callback("copy", copy_closure.as_ref().unchecked_ref());
             copy_closure.forget();
@@ -44,39 +45,19 @@ pub struct Clipboard {
             // Set up a paste event listener.
             let paste_closure = Closure::<dyn FnMut(_)>::new(move |event: ClipboardEvent| {
                 println!("Pasting event");
+                let world = unsafe{&mut *WORLD_ALIAS};
+
+                let clipboard_data = event.clipboard_data().unwrap();
+                let paste_text = clipboard_data.get_data("text").unwrap();
+                let clipboard = world.get_resource::<Clipboard>().unwrap();
+                _ = world.run_system_with_input(clipboard.paste, paste_text);
+
                 event.prevent_default();
-                _ = paste_tx.try_send(event);
             });
             _ = window.add_event_listener_with_callback("paste", paste_closure.as_ref().unchecked_ref());
             paste_closure.forget();
-             
-            // Insert the Clipboard resource
-            app.insert_non_send_resource(ClipboardInternal{
-                copy_queue,
-                paste_queue,
-            });
 
-            app.add_systems(First, event_handler);
-        }
-    }
-
-    fn event_handler(world: &mut World) {
-        let Some(internal) = world.get_non_send_resource::<ClipboardInternal>() else {return};
-        let do_copy  = internal.copy_queue.try_recv().ok();
-        let do_paste = internal.paste_queue.try_recv().ok(); 
-        
-        let Some(clipboard) = world.get_resource::<Clipboard>() else {return};
-        let clipboard = clipboard.clone();
-
-        if let Some(event) = do_copy {
-            let Ok(copy_text) = world.run_system(clipboard.copy) else {return};
-            let Some(clipboard_data) = event.clipboard_data() else {return};
-            _ = clipboard_data.set_data("text", &copy_text);
-        }
-        if let Some(event) = do_paste {
-            let Some(clipboard_data) = event.clipboard_data() else {return};
-            let Ok(paste_text) = clipboard_data.get_data("text") else {return};
-            _ = world.run_system_with_input(clipboard.paste, paste_text);
+            app.add_systems(Last, |world: &mut World| unsafe{WORLD_ALIAS = world as *mut World});
         }
     }
 }
