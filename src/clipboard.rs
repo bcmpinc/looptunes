@@ -29,14 +29,11 @@ pub struct Clipboard {
 
             // Set up a copy event listener.
             let copy_closure = Closure::<dyn FnMut(_)>::new(move |event: ClipboardEvent| {
-                println!("Copying event");
                 let world = unsafe{&mut *WORLD_ALIAS};
-
                 let clipboard = world.get_resource::<Clipboard>().unwrap();
                 let copy_text = world.run_system(clipboard.copy).unwrap();
                 let clipboard_data = event.clipboard_data().unwrap();
                 _ = clipboard_data.set_data("text", &copy_text);
-
                 event.prevent_default();
             });
             _ = window.add_event_listener_with_callback("copy", copy_closure.as_ref().unchecked_ref());
@@ -44,14 +41,11 @@ pub struct Clipboard {
 
             // Set up a paste event listener.
             let paste_closure = Closure::<dyn FnMut(_)>::new(move |event: ClipboardEvent| {
-                println!("Pasting event");
                 let world = unsafe{&mut *WORLD_ALIAS};
-
                 let clipboard_data = event.clipboard_data().unwrap();
                 let paste_text = clipboard_data.get_data("text").unwrap();
                 let clipboard = world.get_resource::<Clipboard>().unwrap();
                 _ = world.run_system_with_input(clipboard.paste, paste_text);
-
                 event.prevent_default();
             });
             _ = window.add_event_listener_with_callback("paste", paste_closure.as_ref().unchecked_ref());
