@@ -1,25 +1,25 @@
 use bevy::prelude::*;
 
-use crate::{println, Clipboard, ClipboardResource};
+use crate::{println, Clipboard, ClipboardPlugin};
 
 pub struct ArchivingPlugin;
 
 impl Plugin for ArchivingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (test_copy, test_paste));
+        let copy = app.register_system(test_copy);
+        let paste = app.register_system(test_paste);
+        app
+            .add_plugins(ClipboardPlugin)
+            .insert_resource(Clipboard{copy,paste});
     }
 }
 
-fn test_copy(
-    mut clipboard: ResMut<Clipboard>
-) {
-    clipboard.try_copy(|| "This is a text from bevy!".into());
+fn test_copy() -> String {
+    "This is a text from bevy!".into()
 }
 
 fn test_paste(
-    mut clipboard: ResMut<Clipboard>
+    text: In<String>,
 ) {
-    if let Some(text) = clipboard.try_paste() {
-        println!("{:?}", text);
-    }
+    println!("Pasting: {:?}", text.0);
 }

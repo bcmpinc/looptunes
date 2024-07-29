@@ -45,7 +45,6 @@ fn main() {
                 ..default()
             }),
             ArchivingPlugin,
-            ClipboardPlugin,
             ConnectorPlugin,
             CycleWavePlugin,
             LoopTunesPlugin,

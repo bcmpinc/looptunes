@@ -1,4 +1,5 @@
 use bevy::{ecs::system::SystemId, prelude::*};
+use web_sys::js_sys::wasm_bindgen;
 
 #[cfg(not(target_family="wasm"))] pub use self::native::*;
 #[cfg(target_family="wasm")] pub use self::wasm::*;
@@ -8,17 +9,14 @@ pub struct Clipboard {
     pub copy: SystemId<(),String>,
     pub paste: SystemId<String>,
 }
-
-
+/*
 mod wasm {
-    use bevy::ecs::system::SystemId;
     use bevy::prelude::*;
     use crossbeam_channel::{bounded, Receiver};
     use web_sys::ClipboardEvent;
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::wasm_bindgen::prelude::Closure;
 
-    use super::ClipboardResource;
     use crate::println;
 
     #[derive(Resource)] pub struct Clipboard {
@@ -105,6 +103,7 @@ mod wasm {
         }
     }
 }
+ */
 
 mod native {
     use bevy::prelude::*;
@@ -143,15 +142,17 @@ mod native {
 
     fn copy_command(world: &mut World) {
         let Some(clipboard) = world.get_resource::<Clipboard>() else {return};
+        let copy = clipboard.copy;
+        let Ok(copy_text) = world.run_system(copy) else {return};
         let mut internal = world.get_resource_mut::<ClipboardInternal>().unwrap();
-        let Ok(copy_text) = world.run_system(clipboard.copy) else {return};
         internal.ctx.set_contents(copy_text);
     }
 
     fn paste_command(world: &mut World) {
         let Some(clipboard) = world.get_resource::<Clipboard>() else {return};
+        let paste = clipboard.paste;
         let mut internal = world.get_resource_mut::<ClipboardInternal>().unwrap();
-        let paste_text = internal.ctx.get_contents() else {return};
-        world.run_system_with_input(clipboard.paste, paste_text);
+        let Ok(paste_text) = internal.ctx.get_contents() else {return};
+        world.run_system_with_input(paste, paste_text);
     }
 }
