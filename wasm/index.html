@@ -6,6 +6,11 @@
     import './restart-audio-context.js'
     import init from './bevy_game.js'
 
+    document.body.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
     init().catch((error) => {
       if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
         throw error;

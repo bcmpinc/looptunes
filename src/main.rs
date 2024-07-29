@@ -37,7 +37,7 @@ fn main() {
                     title: "Loop Tunes!".into(),
                     present_mode: PresentMode::AutoNoVsync,
                     fit_canvas_to_parent: true,
-                    prevent_default_event_handling: true,
+                    prevent_default_event_handling: false,
                     window_theme: Some(WindowTheme::Dark),
                     ..default()
                 }),
