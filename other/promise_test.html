@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <header></header>
+    <main></main>
+    <footer></footer>
+  </body>
+  <script>
+  document.addEventListener("copy", function(event) {
+    event.clipboardData.setData("text", "this is a test");
+    event.preventDefault();
+  });
+  document.addEventListener("paste", function(event) {
+    document.body.textContent = event.clipboardData.getData("text");
+    event.preventDefault();
+  });
+  </script>
+</html>
