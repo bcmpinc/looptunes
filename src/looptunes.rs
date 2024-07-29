@@ -13,8 +13,26 @@ pub struct LoopTunesPlugin;
 impl Plugin for LoopTunesPlugin {
     fn build(&self, app: &mut App) {
         println!("Enabling LoopTunes audio backend Plugin!");
-        app.insert_resource(LoopTunesBackend::default());
-        //app.add_systems(Update, play_anything);
+        // Init rodio
+        let (stream, stream_handle) = OutputStream::try_default().unwrap();
+        
+        // Create a channel
+        let (tx,rx) = bounded::<f32>(LoopTunesBackend::BUFFER);
+        let source = LoopSource{consumer: rx, last: 0.0};
+        
+        // Get something we can send audio to.
+        let sink = Sink::try_new(&stream_handle).unwrap();
+        sink.append(source);
+
+        app.insert_resource(LoopTunesBackend{
+            producer: tx,
+            position: 0,
+        });
+        // Keep stream & sink alive for the duration of the application.
+        app.insert_non_send_resource(LoopTunesInternal{
+            stream,
+            sink,
+        });
     }
 }
 
@@ -23,6 +41,11 @@ pub struct LoopTunesBackend {
     producer: Sender<f32>,
     position: u32,
 }
+struct LoopTunesInternal {
+    #[allow(unused)] stream: OutputStream,
+    #[allow(unused)] sink: Sink,
+}
+
 impl LoopTunesBackend {
     const SAMPLE_RATE: u32 = 48000;
     const FRAME_SIZE: usize = 1024;
@@ -52,27 +75,6 @@ impl LoopTunesBackend {
 
     pub fn elapsed_seconds(&self) -> f32 {
         (self.position as f32 - (16 * Self::FRAME_SIZE) as f32) / Self::SAMPLE_RATE as f32
-    }
-}
-impl Default for LoopTunesBackend {
-    fn default() -> Self {
-        // Init rodio
-        let (stream, stream_handle) = OutputStream::try_default().unwrap();
-        Box::leak(Box::from(stream)); // Keep stream alive for the duration of the application.
-
-        // Create a channel
-        let (tx,rx) = bounded::<f32>(LoopTunesBackend::BUFFER);
-        let source = LoopSource{consumer: rx, last: 0.0};
-
-        // Get something we can send audio to.
-        let sink = Sink::try_new(&stream_handle).unwrap();
-        sink.append(source);
-        Box::leak(Box::from(sink));
-        
-        Self { 
-            producer: tx,
-            position: 0,
-        }
     }
 }
 
