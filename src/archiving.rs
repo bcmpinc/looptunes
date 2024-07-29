@@ -97,7 +97,7 @@ fn copy_tree(
         Ok(ok) => ok,
         Err(err) => { println!("Failed to copy tree: {:?}", err); return default() }
     };
-    return BASE64_STANDARD.encode(&compressed).into();
+    return BASE64_URL_SAFE_NO_PAD.encode(&compressed).into();
 }
 
 fn paste_tree(
@@ -105,7 +105,7 @@ fn paste_tree(
     mut commands: Commands,
     mouse: Res<MousePos>,
 ) {
-    let compressed = match BASE64_STANDARD.decode(text.0) {
+    let compressed = match BASE64_URL_SAFE_NO_PAD.decode(text.0) {
         Ok(ok) => ok,
         Err(err) => { println!("Failed to paste tree: {:?}", err); return }
     };
