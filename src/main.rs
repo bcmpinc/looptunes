@@ -18,8 +18,8 @@ use smallvec::SmallVec;
 
 // Modules
 mod archiving; use archiving::*;
-mod connector; use connector::*;
 mod clipboard; use clipboard::*;
+mod connector; use connector::*;
 mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
 mod micetrack; use micetrack::*;
@@ -44,12 +44,13 @@ fn main() {
                 }),
                 ..default()
             }),
-            PanCameraPlugin(MouseButton::Right),
-            CycleWavePlugin,
-            MiceTrackPlugin,
-            LoopTunesPlugin,
-            ConnectorPlugin,
+            ArchivingPlugin,
             ClipboardPlugin,
+            ConnectorPlugin,
+            CycleWavePlugin,
+            LoopTunesPlugin,
+            MiceTrackPlugin,
+            PanCameraPlugin(MouseButton::Right),
         ))
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cyclewaves)

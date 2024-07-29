@@ -4,8 +4,8 @@ use bevy::prelude::*;
 #[cfg(target_family="wasm")] pub use self::wasm::*;
 
 pub trait ClipboardResource : Resource {
-    fn try_receive(&mut self) -> Option<String>;
-    fn try_send(&mut self, callback: impl FnOnce() -> String) -> Option<()>;
+    fn try_paste(&mut self) -> Option<String>;
+    fn try_copy(&mut self, callback: impl FnOnce() -> String) -> Option<()>;
 }
 
 mod wasm {
@@ -26,7 +26,7 @@ mod wasm {
     unsafe impl Sync for Clipboard {} // WASM is single threaded
 
     impl ClipboardResource for Clipboard {
-        fn try_receive(&mut self) -> Option<String> {
+        fn try_paste(&mut self) -> Option<String> {
             let event = self.paste_queue.try_recv().ok()?;
             let clipboard_data = event.clipboard_data()?;
             let pasted_text = clipboard_data.get_data("text/plain").ok()?;
@@ -34,7 +34,7 @@ mod wasm {
             Some(pasted_text)
         }
 
-        fn try_send(&mut self, callback: impl FnOnce() -> String) -> Option<()> {
+        fn try_copy(&mut self, callback: impl FnOnce() -> String) -> Option<()> {
             let event = self.copy_queue.try_recv().ok()?;
             let clipboard_data = event.clipboard_data()?;
             let copied_text = callback();
@@ -96,7 +96,7 @@ mod native {
     }
 
     impl ClipboardResource for Clipboard {
-        fn try_receive(&mut self) -> Option<String> {
+        fn try_paste(&mut self) -> Option<String> {
             if self.request_paste.swap(false, Ordering::Relaxed) {
                 self.ctx.get_contents().ok()
             } else {
@@ -104,7 +104,7 @@ mod native {
             }
         }
 
-        fn try_send(&mut self, callback: impl FnOnce() -> String) -> Option<()>{
+        fn try_copy(&mut self, callback: impl FnOnce() -> String) -> Option<()>{
             if self.request_copy.swap(false, Ordering::Relaxed) {
                 self.ctx.set_contents(callback()).ok()
             } else {
@@ -123,14 +123,14 @@ mod native {
             });
             app.add_systems(First, |
                 keyboard: Res<ButtonInput<KeyCode>>,
-                Clipboard:  ResMut<Clipboard>,
+                clipboard: ResMut<Clipboard>,
             | {
                 if is_ctrl(&keyboard) {
                     if keyboard.just_pressed(KeyCode::KeyC) {
-                        Clipboard.request_copy.store(true, Ordering::Relaxed);
+                        clipboard.request_copy.store(true, Ordering::Relaxed);
                     }
                     if keyboard.just_pressed(KeyCode::KeyV) {
-                        Clipboard.request_paste.store(true, Ordering::Relaxed);
+                        clipboard.request_paste.store(true, Ordering::Relaxed);
                     }
                 }
             });
