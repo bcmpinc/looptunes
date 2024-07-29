@@ -9,8 +9,6 @@ It was created during [bevy-jam 5](https://itch.io/jam/bevy-jam-5) with the them
 
 This is my first real bevy project and to avoid complicated things like UI, it has no UI. Please check the controls below.
 
-The procedural audio is played through a [custom audio backend](src/looptunes.rs) written during the jam using crossbeam-channel and rodio.
-Copy & paste functionality is provided by a [clipboard plugin](src/clipboard.rs) that I also wrote during the jam.
 
 ### How to start
 - Click on the 2m8s circle.
@@ -26,7 +24,6 @@ Copy & paste functionality is provided by a [clipboard plugin](src/clipboard.rs)
 - Other people can copy that and paste it into the game with *ctrl + V*. 
 
 ### Available on:
-
 - [itch.io](https://bcmpinc.itch.io/loop-tunes)
 - [github](https://github.com/bcmpinc/looptunes)
 
@@ -58,7 +55,17 @@ Copy & paste functionality is provided by a [clipboard plugin](src/clipboard.rs)
 - Add/change connection by holding *shift* and dragging from one circle to another.
 - While dragging a new connection, hold *shift* for angle snapping, or release *shift* for free positioning.
 
-## Libraries used
+## Credits
+The very few assets this game has, have been made by me during the jam.
+
+ChatGPT has been invaluable for teaching me how to write code for bevy and where to look in the documentation.
+Without it, I would not have been able to write things like:
+
+- the [custom audio backend](src/looptunes.rs) for playing procedrual music; and
+- the [clipboard plugin](src/clipboard.rs) for saving and loading creations.
+
+
+### Used libraries:
 - bevy v0.14 (obviously)
 - bevy_embedded_assets
 - rodio & crossbeam-channel (for audio playback)
