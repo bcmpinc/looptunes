@@ -62,7 +62,7 @@ for teaching me how to write code for bevy. Without these,
 I would not have been able to write loop-tunes. In particular
 
 - the [custom audio backend](src/looptunes.rs) for playing procedrual music; and
-- the [clipboard plugin](src/clipboard.rs) for saving and loading creations.
+- the [clipboard plugin](src/clipboard.rs) for clipboard access in both wasm and native builds,
 
 would have been impossible.
 
