@@ -9,9 +9,22 @@ It was created during [bevy-jam 5](https://itch.io/jam/bevy-jam-5) with the them
 
 This is my first real bevy project and to avoid complicated things like UI, it has no UI. Please check the controls below.
 
-The procedural audio is played through a [tiny custom backend](src/looptunes.rs) written during the jam using crossbeam-channel and rodio.
+The procedural audio is played through a [custom audio backend](src/looptunes.rs) written during the jam using crossbeam-channel and rodio.
+Copy & paste functionality is provided by a [clipboard plugin](src/clipboard.rs) that I also wrote during the jam.
 
-## Available on:
+### How to start
+- Click on the 2m8s circle.
+- Keep the mouse above it.
+- Press *shift + space* to start playing.
+- Press that again to make it stop.
+- Check the controls below on how to draw your own music.
+
+### How to share
+- Hover above your song's root node and press *ctrl + C* to copy your creation.
+- Share it in the comments below.
+- Other people can copy it and paste it with *ctrl + V* into the game.
+
+### Available on:
 
 - [itch.io](https://bcmpinc.itch.io/loop-tunes)
 - [github](https://github.com/bcmpinc/looptunes)
@@ -35,9 +48,10 @@ The procedural audio is played through a [tiny custom backend](src/looptunes.rs)
 **Circle creation/removal:**
 - Use the *0-9* keys to add new circles.
 - Hold *shift* to insert new circles with 1Hz instead of 440Hz.
-- Clone circles by holding *ctrl* while dragging them.
-- Delete circles using the *delete* key (note that there is no undo).
-- Delete entire trees using *shift + delete* (there is still no undo).
+- Clone circles by holding *ctrl* while dragging them. Hold *shift* to include child nodes.
+- Delete circles using the *delete* key. Hold *shift* to include child nodes. 
+- Copy a node and all its children with *ctrl + C* and paste with *ctrl + V*.
+- You can save a copied tree by pasting it into a text file.
 
 **Connectivity**
 - Add/change connection by holding *shift* and dragging from one circle to another.
