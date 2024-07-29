@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{println, ChildCycles, Clipboard, ClipboardPlugin, Cycle, Hover, Wave};
+use crate::{println, ChildCycles, Clipboard, ClipboardPlugin, Cycle, CycleWaveBundle, Hover, MousePos, Wave};
 
 pub struct ArchivingPlugin;
 
@@ -97,8 +97,40 @@ fn copy_tree(
 fn paste_tree(
     text: In<String>,
     mut commands: Commands,
+    mouse: Res<MousePos>,
 ) {
-    println!("Pasting: {:?}", text.0);
+    match serde_json::from_str::<Tree>(text.0.as_str()) {
+        Err(err) => println!("Failed to paste tree: {:?}", err),
+        Ok(tree) => {
+            let mut entities = Vec::<Entity>::new();
+            for node in tree.nodes.iter() {
+                let root = entities.is_empty();
+                let wave = &tree.waves[node.wave as usize];
+                let mut pattern = [0.0; Wave::LENGTH];
+                for i in 0..Wave::LENGTH {
+                    pattern[i] = wave.0[i] as f32 / 65535.0;
+                }
+                let mut ec = commands.spawn(CycleWaveBundle{
+                    cycle: Cycle{
+                        frequency: node.frequency,
+                        phase: node.phase,
+                        color: node.color,
+                    },
+                    wave: Wave{
+                        pattern,
+                        ..default()
+                    },
+                    transform: Transform::from_translation(if root {mouse.position} else {node.position}.extend(0.0)),
+                    ..default()
+                });
+                if !root {
+                    ec.set_parent(entities[node.parent as usize]);
+                }
+                entities.push(ec.id());
+            }
+        }
+    }
+    
 }
 
 /*
