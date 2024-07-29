@@ -39,7 +39,7 @@ struct Tree{
     waves: Vec<WavePattern>,
 }
 
-fn copy_tree(
+pub fn copy_tree(
     q_cycles: Query<(&Cycle, &Wave, &Transform)>,
     q_children: Query<&ChildCycles>,
     hover: Res<Hover>,
@@ -100,7 +100,7 @@ fn copy_tree(
     return BASE64_URL_SAFE_NO_PAD.encode(&compressed).into();
 }
 
-fn paste_tree(
+pub fn paste_tree(
     text: In<String>,
     mut commands: Commands,
     mouse: Res<MousePos>,

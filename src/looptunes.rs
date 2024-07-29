@@ -54,7 +54,7 @@ impl LoopTunesBackend {
     const BUFFER: usize = 4096;
 
     pub fn reset(&mut self) {
-        self.position = 0;
+        self.position = Self::SAMPLE_RATE * 128;
     }
 
     pub fn send_buffer(&mut self, samples: &Vec<f32>) {

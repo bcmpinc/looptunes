@@ -24,6 +24,7 @@ mod cyclewave; use cyclewave::*;
 mod looptunes; use looptunes::*; 
 mod micetrack; use micetrack::*;
 mod pancamera; use pancamera::*;
+mod starttune; use starttune::*;
 mod utilities; use utilities::*;
 
 fn main() {
@@ -590,29 +591,10 @@ fn play_everything(
 }
 
 fn spawn_cyclewaves(
-    mut commands: Commands,
+    commands: Commands,
+    mouse: Res<MousePos>,
 ) {
-    // Example circle data
-    let nodes = vec![
-        (-6.0, 0.0, LinearRgba::rgb(0.0, 1.0, 1.0), Wave::TRIANGLE),
-        (-3.0, 0.0, LinearRgba::rgb(1.0, 0.0, 1.0), Wave::SAWTOOTH),
-        ( 0.0, 0.0, LinearRgba::rgb(1.0, 1.0, 0.0), Wave::NOISE),
-        ( 3.0, 0.0, LinearRgba::rgb(0.2, 1.0, 0.2), Wave::SQUARE),
-        ( 6.0, 0.0, LinearRgba::rgb(1.0, 0.5, 0.1), Wave::SINE),
-    ];
-
-    for (x,y,color,f) in nodes {
-        commands.spawn(CycleWaveBundle{
-            cycle: Cycle{
-                color: color,
-                frequency: Cycle::NOTE_A4,
-                ..Default::default()
-            },
-            wave: Wave::new(f),
-            transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
-            ..default()
-        });
-    }
+    paste_tree(In(START_TUNE.into()), commands, mouse);
 }
 
 fn colorize(
