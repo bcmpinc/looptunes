@@ -51,7 +51,7 @@ struct LoopTunesInternal {
 impl LoopTunesBackend {
     const SAMPLE_RATE: u32 = 48000;
     const FRAME_SIZE: usize = 2048;
-    const BUFFER: usize = 4096;
+    const BUFFER: usize = 2048*4;
 
     pub fn reset(&mut self) {
         self.position = Self::SAMPLE_RATE * 128;
@@ -76,7 +76,7 @@ impl LoopTunesBackend {
     }
 
     pub fn elapsed_seconds(&self) -> f32 {
-        (self.position as f32 - (4 * Self::BUFFER) as f32) / Self::SAMPLE_RATE as f32
+        (self.position as f32 - (2 * Self::BUFFER) as f32) / Self::SAMPLE_RATE as f32
     }
 }
 
