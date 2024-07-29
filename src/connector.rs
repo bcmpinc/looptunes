@@ -97,10 +97,10 @@ fn position_segment_mesh(
     for (segment_entity, segment) in q_segment.iter() {
         let Ok(child_cycle) = q_cycle.get(segment.child_cycle) else {continue};
         let parent_cycle = segment.parent_cycle.and_then(|id| q_cycle.get(id).ok());
-        let child_pos = q_global_transform.get(segment.child_cycle).unwrap();
+        let Ok(child_pos) = q_global_transform.get(segment.child_cycle) else {continue};
 
         // Position the arrow (as target)
-        let arrow_global = q_global_transform.get(segment.arrow).unwrap();
+        let Ok(arrow_global) = q_global_transform.get(segment.arrow) else {continue};
         let target = arrow_global.transform_point(Vec3::new(0.0,100.0, 0.0)).truncate();
         let target_size = parent_cycle.map_or(1.0, |c| c.scale());
         if parent_cycle.is_some() {
@@ -113,7 +113,7 @@ fn position_segment_mesh(
         }
 
         // Position the bow (as source)
-        let bow_global = q_global_transform.get(segment.bow).unwrap();
+        let Ok(bow_global) = q_global_transform.get(segment.bow) else {continue};
         let source = bow_global.transform_point(Vec3::new(0.0,-10.0, 0.0)).truncate();
         let source_size = child_cycle.scale();
         let source_rotation = Quat::from_rotation_z(Vec2::to_angle(target - child_pos.translation().truncate())) * Quat::from_rotation_z(PI/2.0);
