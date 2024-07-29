@@ -620,7 +620,7 @@ fn colorize(
     mut q_cycles: Query<&mut Cycle>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    if !keyboard.pressed(KeyCode::KeyC) {return}
+    if !keyboard.pressed(KeyCode::KeyZ) {return}
     let Some(ent) = hover.entity else {return};
     let Ok(mut cycle) = q_cycles.get_mut(ent) else {return};
     let hue = (hover.position.to_angle() + PI) / TAU;

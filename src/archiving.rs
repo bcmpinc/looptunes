@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use zstd::bulk::{compress, decompress};
+use base64::prelude::*;
 
 use crate::{println, ChildCycles, Clipboard, ClipboardPlugin, Cycle, CycleWaveBundle, Hover, MousePos, Segment, Wave};
 
@@ -87,11 +89,15 @@ fn copy_tree(
         }
     }
 
-    match serde_json::to_string(&tree) {
-        Ok(text) => return text.into(),
-        Err(err) => println!("Failed to copy tree: {:?}", err),
-    }
-    default()
+    let serialized = match bitcode::serialize(&tree) {
+        Ok(ok) => ok,
+        Err(err) => { println!("Failed to copy tree: {:?}", err); return default() }
+    };
+    let compressed = match compress(&serialized, 0) {
+        Ok(ok) => ok,
+        Err(err) => { println!("Failed to copy tree: {:?}", err); return default() }
+    };
+    return BASE64_STANDARD.encode(&compressed).into();
 }
 
 fn paste_tree(
@@ -99,39 +105,46 @@ fn paste_tree(
     mut commands: Commands,
     mouse: Res<MousePos>,
 ) {
-    match serde_json::from_str::<Tree>(text.0.as_str()) {
-        Err(err) => println!("Failed to paste tree: {:?}", err),
-        Ok(tree) => {
-            let mut entities = Vec::<Entity>::new();
-            for node in tree.nodes.iter() {
-                let root = entities.is_empty();
-                let wave = &tree.waves[node.wave as usize];
-                let mut pattern = [0.0; Wave::LENGTH];
-                for i in 0..Wave::LENGTH {
-                    pattern[i] = wave.0[i] as f32 / 65535.0;
-                }
-                let mut ec = commands.spawn(CycleWaveBundle{
-                    cycle: Cycle{
-                        frequency: node.frequency,
-                        phase: node.phase,
-                        color: node.color,
-                    },
-                    wave: Wave{
-                        pattern,
-                        ..default()
-                    },
-                    transform: Transform::from_translation(if root {mouse.position} else {node.position}.extend(0.0)),
-                    ..default()
-                });
-                let id = ec.id();
-                entities.push(id);
-                if !root {
-                    let parent = entities[node.parent as usize];
-                    ec.set_parent(parent);
-                    Segment::spawn(&mut commands, id, Some(parent));
-                }
-            }
+    let compressed = match BASE64_STANDARD.decode(text.0) {
+        Ok(ok) => ok,
+        Err(err) => { println!("Failed to paste tree: {:?}", err); return }
+    };
+    let serialized = match decompress(&compressed, 64 * 1024 * 1024) { // Max uncompressed filesize is 64 MB.
+        Ok(ok) => ok,
+        Err(err) => { println!("Failed to paste tree: {:?}", err); return }
+    };
+    let tree = match bitcode::deserialize::<Tree>(&serialized) {
+        Ok(ok) => ok,
+        Err(err) => { println!("Failed to paste tree: {:?}", err); return }
+    };
+
+    let mut entities = Vec::<Entity>::new();
+    for node in tree.nodes.iter() {
+        let root = entities.is_empty();
+        let wave = &tree.waves[node.wave as usize];
+        let mut pattern = [0.0; Wave::LENGTH];
+        for i in 0..Wave::LENGTH {
+            pattern[i] = wave.0[i] as f32 / 65535.0;
+        }
+        let mut ec = commands.spawn(CycleWaveBundle{
+            cycle: Cycle{
+                frequency: node.frequency,
+                phase: node.phase,
+                color: node.color,
+            },
+            wave: Wave{
+                pattern,
+                ..default()
+            },
+            transform: Transform::from_translation(if root {mouse.position} else {node.position}.extend(0.0)),
+            ..default()
+        });
+        let id = ec.id();
+        entities.push(id);
+        if !root {
+            let parent = entities[node.parent as usize];
+            ec.set_parent(parent);
+            Segment::spawn(&mut commands, id, Some(parent));
         }
     }
-    
 }

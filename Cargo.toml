@@ -21,7 +21,9 @@ smallvec = "1.13.2"
 copypasta = "0.10.1"
 web-sys = { version = "0.3.69", features = ["Window","ClipboardEvent","DataTransfer","console"] }
 serde = "1.0.204"
-serde_json = "1.0.121"
+bitcode = { version = "0.6.3", features = ["serde"] }
+zstd = "0.13.2"
+base64 = "0.22.1"
 
 [dev-dependencies]
 bevy = {version = "0.14", default-features = false, features = ["android_shared_stdcxx","bevy_asset","bevy_core_pipeline","bevy_sprite","bevy_text","bevy_winit","default_font","png","webgl2","x11","dynamic_linking","multi_threaded","file_watcher"]}

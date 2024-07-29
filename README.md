@@ -30,7 +30,7 @@ The procedural audio is played through a [tiny custom backend](src/looptunes.rs)
 - Drag circles with the *left mouse button*.
 - Draw on circles with the *left mouse button* while zoomed in.
 - Change the frequency of circles with *shift + scroll wheel*.
-- Change the color of circles with *c*.
+- Change the color of circles with *Z*.
 
 **Circle creation/removal:**
 - Use the *0-9* keys to add new circles.
