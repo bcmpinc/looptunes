@@ -74,7 +74,11 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn(Camera2dBundle{
-        transform: Transform::from_scale(Vec3::new(0.02,0.02,1.0)),
+        transform: Transform{
+            scale: Vec3::new(0.08,0.08,1.0),
+            rotation: default(),
+            translation: Vec3::new(0.0,10.0,0.0)
+        },
         ..default()
     });
     
